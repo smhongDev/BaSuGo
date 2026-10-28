@@ -47,7 +47,13 @@ export type ForecastResponse = {
   notes: string[];
   /** 만조·간조를 어디서 가져왔는지 */
   tideSource?: string;
+  /** 정보마다 어느 지역 기준인지 */
+  sources?: ForecastSources;
+  /** 선택한 곳 정보가 없어 가까운 지역 정보를 대신 보여 주는 경우의 안내 */
+  fallbacks?: string[];
 };
+
+export type ForecastSources = { weather: string; sea: string; tide: string };
 
 export type GeoCandidate = {
   name: string;

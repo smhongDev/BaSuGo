@@ -375,20 +375,23 @@ label.btn:focus-within {
 .cal-cell {
   font: inherit;
   color: inherit;
+  text-align: left;
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 10px;
-  min-height: 76px;
-  padding: 4px;
+  min-height: 132px;
+  padding: 5px 6px;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  justify-items: center;
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  gap: 3px;
   cursor: pointer;
-  position: relative;
+  min-width: 0;
 }
 .cal-cell:disabled {
   opacity: 0.35;
   cursor: default;
+  min-height: 0;
 }
 .cal-cell.rating-good {
   background: var(--good-bg);
@@ -399,26 +402,110 @@ label.btn:focus-within {
 .cal-cell.rating-bad {
   background: var(--bad-bg);
 }
+.cal-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .cal-date {
   font-weight: 700;
   font-size: 0.9rem;
-  justify-self: start;
+}
+.cal-date.sun {
+  color: var(--bad);
+}
+.cal-date.sat {
+  color: var(--brand);
+}
+.cal-wd {
+  display: none;
 }
 .cal-icon {
-  font-size: 1.2rem;
-  align-self: center;
-}
-.cal-sub {
-  font-size: 0.7rem;
-  color: var(--muted);
+  font-size: 1.1rem;
+  margin-left: auto;
 }
 .cal-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
+  flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+.cal-info {
+  display: grid;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  color: var(--muted);
+  min-width: 0;
+}
+.cal-info > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-info .cal-weather {
+  color: var(--text);
+  font-weight: 600;
+}
+.cal-wrap {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+}
+.cal-side {
+  font: inherit;
+  font-size: 1.6rem;
+  color: var(--brand);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  width: 40px;
+  cursor: pointer;
+}
+.cal-side:hover:not(:disabled) {
+  background: var(--line);
+}
+.cal-side:disabled {
+  opacity: 0.4;
+}
+/* 좁은 화면: 7칸 달력 대신 날짜별 목록 */
+@media (max-width: 760px) {
+  .calendar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cal-dow,
+  .cal-pad,
+  .cal-side {
+    display: none;
+  }
+  .cal-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cal-cell {
+    min-height: 0;
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-rows: auto;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .cal-top {
+    flex-wrap: wrap;
+    align-content: flex-start;
+  }
+  .cal-wd {
+    display: inline;
+    font-weight: 400;
+    margin-left: 3px;
+  }
+  .cal-icon {
+    margin-left: 0;
+  }
+  .cal-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    font-size: 0.8rem;
+  }
 }
 .dot,
 .dot-good,
@@ -538,12 +625,6 @@ label.btn:focus-within {
 @media (max-width: 520px) {
   .row:not(.wrap):not(.between) {
     flex-wrap: wrap;
-  }
-  .cal-cell {
-    min-height: 64px;
-  }
-  .cal-sub {
-    display: none;
   }
   .btn-accent {
     width: 100%;
@@ -690,4 +771,43 @@ textarea {
   max-width: 420px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* ---- 날짜 카드의 물때·일출, 정보 기준 지역 ---- */
+.tide-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 0.86rem;
+}
+.tide-list > div {
+  display: grid;
+  grid-template-columns: 4.6em minmax(0, 1fr);
+  gap: 6px;
+}
+.tide-list dt {
+  color: var(--muted);
+}
+.tide-list dd {
+  margin: 0;
+}
+.more-days {
+  align-items: center;
+  margin-top: 8px;
+}
+.source-info {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+.source-info p {
+  margin: 2px 0;
+}
+.source-info.fallback {
+  border-color: var(--caution);
+  background: var(--caution-bg);
+}
+.muted {
+  color: var(--muted);
 }

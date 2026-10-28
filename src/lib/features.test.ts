@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { alertsFor, formatTmFc, matchRegions, splitLines } from "./warnings.ts";
-import { COAST_POINTS, nearestCoastPoint, nearestTideStation } from "./regions.ts";
+import { COAST_POINTS, coastPointsByDistance, nearestCoastPoint, nearestTideStation, tideStationsByDistance } from "./regions.ts";
 import { parseKhoaItems } from "./khoa.ts";
 import { rateDay, THRESHOLDS } from "./score.ts";
 import { validateThresholds } from "./server/settings.ts";
@@ -119,4 +119,32 @@ test("알림 판단: 특보·판정 변화가 있을 때만", () => {
     decideAlert(trip, { rating: "good", reasons: [] }, [{ kind: "강풍주의보", level: "주의보", match: "province", areas: "부산" }], "내일"),
     null,
   );
+});
+
+test("국립해양조사원 실제 응답 형식: extrSe 1·3 고조, 2·4 저조", () => {
+  const ev = parseKhoaItems([
+    { obsvtrNm: "부산", predcDt: "2026-10-29 03:37", predcTdlvVl: 10.0, extrSe: "2" },
+    { obsvtrNm: "부산", predcDt: "2026-10-29 10:14", predcTdlvVl: 132.0, extrSe: "1" },
+    { obsvtrNm: "부산", predcDt: "2026-10-29 16:06", predcTdlvVl: 17.0, extrSe: "4" },
+    { obsvtrNm: "부산", predcDt: "2026-10-29 22:17", predcTdlvVl: 112.0, extrSe: "3" },
+  ]);
+  assert.deepEqual(
+    ev.map((e) => [e.type, e.time, e.height]),
+    [
+      ["low", "2026-10-29T03:37", 0.1],
+      ["high", "2026-10-29T10:14", 1.32],
+      ["low", "2026-10-29T16:06", 0.17],
+      ["high", "2026-10-29T22:17", 1.12],
+    ],
+  );
+});
+
+test("가까운 정보가 없을 때 대신 쓸 지역: 가까운 순, 120km 안", () => {
+  // 대전: 35km 안 관측소·60km 안 해안은 없지만 120km 안에서는 찾는다
+  assert.equal(nearestTideStation(36.35, 127.38), null);
+  const coasts = coastPointsByDistance(36.35, 127.38, 3);
+  assert.ok(coasts.length > 0 && coasts.every((c, i) => i === 0 || coasts[i - 1].km <= c.km));
+  assert.ok(coasts.every((c) => c.km <= 120));
+  assert.equal(tideStationsByDistance(35.1587, 129.1604, 2)[0].item.code, "DT_0005");
+  assert.deepEqual(coastPointsByDistance(40.5, 140, 3), []); // 너무 먼 곳
 });

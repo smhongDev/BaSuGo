@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { MapView } from "@/components/MapView";
-import { RatingBadge } from "@/components/DayParts";
+import { RatingBadge, SourceInfo } from "@/components/DayParts";
 import { WarningBox } from "@/components/AlertParts";
 import { fetchForecast } from "@/lib/api";
 import { addDays, formatKoDate, kstToday } from "@/lib/dates";
 import { saveTrip } from "@/lib/storage";
 import { hhmm } from "@/lib/tides";
-import type { DayInfo, Place } from "@/lib/types";
+import type { DayInfo, ForecastResponse, Place } from "@/lib/types";
 
 const num = (v: number | null, unit: string, digits = 1) => (v === null ? "–" : `${v.toFixed(digits)}${unit}`);
 
@@ -25,6 +25,7 @@ export function DayClient() {
 
   const [day, setDay] = useState<DayInfo | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
+  const [sources, setSources] = useState<Pick<ForecastResponse, "sources" | "fallbacks">>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function DayClient() {
         if (cancelled) return;
         setDay(r.days[0]);
         setNotes(r.notes);
+        setSources({ sources: r.sources, fallbacks: r.fallbacks });
         saveTrip(place, date, r.days[0]); // 상세를 열면 저장되어 있도록 보장
       })
       .catch((e) => !cancelled && setError(e instanceof Error ? e.message : "정보를 가져오지 못했어요."));
@@ -177,6 +179,8 @@ export function DayClient() {
               </div>
             </dl>
           </section>
+
+          <SourceInfo data={sources} />
 
           <p className="hint">
             ‘나의 바수’에 저장되어 있어요. {date < today ? "지난 날짜라 예보는 없어요." : ""}{" "}

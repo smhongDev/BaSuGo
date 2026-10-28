@@ -102,20 +102,30 @@ export const TIDE_STATIONS: TideStation[] = [
 /** 이보다 멀면 매칭하지 않는다 (내륙·먼 바다) */
 const COAST_MAX_KM = 60;
 const TIDE_MAX_KM = 35;
+/** 가까운 곳 정보가 없을 때 대신 쓸 수 있는 거리 (그보다 멀면 쓰지 않는다) */
+export const FALLBACK_MAX_KM = 120;
 
-function nearest<T extends { lat: number; lng: number }>(items: T[], lat: number, lng: number, maxKm: number) {
-  let best: { item: T; km: number } | null = null;
-  for (const item of items) {
-    const km = haversineKm({ lat, lng }, item);
-    if (!best || km < best.km) best = { item, km };
-  }
-  return best && best.km <= maxKm ? best : null;
+function byDistance<T extends { lat: number; lng: number }>(items: T[], lat: number, lng: number, maxKm: number) {
+  return items
+    .map((item) => ({ item, km: haversineKm({ lat, lng }, item) }))
+    .filter((x) => x.km <= maxKm)
+    .sort((a, b) => a.km - b.km);
 }
 
 export function nearestCoastPoint(lat: number, lng: number) {
-  return nearest(COAST_POINTS, lat, lng, COAST_MAX_KM);
+  return byDistance(COAST_POINTS, lat, lng, COAST_MAX_KM)[0] ?? null;
 }
 
 export function nearestTideStation(lat: number, lng: number) {
-  return nearest(TIDE_STATIONS, lat, lng, TIDE_MAX_KM);
+  return byDistance(TIDE_STATIONS, lat, lng, TIDE_MAX_KM)[0] ?? null;
+}
+
+/** 가까운 순서의 해안 기준점 (대신 쓸 지역 찾기) */
+export function coastPointsByDistance(lat: number, lng: number, limit = 3, maxKm = FALLBACK_MAX_KM) {
+  return byDistance(COAST_POINTS, lat, lng, maxKm).slice(0, limit);
+}
+
+/** 가까운 순서의 조위관측소 */
+export function tideStationsByDistance(lat: number, lng: number, limit = 3, maxKm = FALLBACK_MAX_KM) {
+  return byDistance(TIDE_STATIONS, lat, lng, maxKm).slice(0, limit);
 }

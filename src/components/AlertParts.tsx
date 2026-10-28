@@ -64,6 +64,7 @@ export function WarningBox({ lat, lng, compact = false }: { lat: number; lng: nu
       <p className="warn-none">
         ✅ 현재 {w.region ? `${w.region} 부근에 ` : ""}바다수영과 관련된 기상특보가 없어요.
         <span className="hint-inline"> (기상청 {w.issuedAt ?? ""} 발표)</span>
+        {w.regionNote && <span className="hint-inline"> {w.regionNote}</span>}
       </p>
     );
   }
@@ -83,6 +84,7 @@ export function WarningBox({ lat, lng, compact = false }: { lat: number; lng: nu
         ))}
       </ul>
       <span className="hint-inline">기상청 {w.issuedAt ?? ""} 발표 · 특보 중에는 입수하지 마세요.</span>
+      {w.regionNote && <span className="hint-inline"> {w.regionNote}</span>}
     </div>
   );
 }

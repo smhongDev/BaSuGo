@@ -4,12 +4,12 @@ export function dataGoKrKey(): string | null {
   return k ? k : null;
 }
 
-type Envelope<T> = {
-  response?: {
-    header?: { resultCode?: string; resultMsg?: string };
-    body?: { items?: { item?: T | T[] } | "" };
-  };
+type Body<T> = {
+  header?: { resultCode?: string; resultMsg?: string };
+  body?: { items?: { item?: T | T[] } | "" };
 };
+/** 기상청은 { response: {header, body} }, 국립해양조사원은 {header, body} 를 바로 준다 */
+type Envelope<T> = Body<T> & { response?: Body<T> };
 
 /**
  * data.go.kr 표준 응답(response.header/body.items.item)을 받아 item 배열을 돌려준다.
@@ -32,10 +32,11 @@ export async function fetchDataGoKr<T>(endpoint: string, params: Record<string, 
     const msg = text.match(/<(?:returnAuthMsg|errMsg|resultMsg)>([^<]+)</)?.[1] ?? "알 수 없는 응답";
     throw new Error(msg.trim());
   }
-  const code = json.response?.header?.resultCode;
+  const env = json.response ?? json;
+  const code = env.header?.resultCode;
   if (code === "03") return [];
-  if (code && code !== "00") throw new Error(`${code} ${json.response?.header?.resultMsg ?? ""}`.trim());
-  const items = json.response?.body?.items;
+  if (code && code !== "00") throw new Error(`${code} ${env.header?.resultMsg ?? ""}`.trim());
+  const items = env.body?.items;
   const item = items && typeof items === "object" ? items.item : undefined;
   if (item == null) return [];
   return Array.isArray(item) ? item : [item];

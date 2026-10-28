@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MapView, KOREA_CENTER } from "@/components/MapView";
-import { CalendarGrid, DayCard, dayHref } from "@/components/DayParts";
+import { CalendarGrid, DayCard, dayHref, SourceInfo } from "@/components/DayParts";
 import { UpcomingAlerts, WarningBox } from "@/components/AlertParts";
 import { fetchForecast, nameForPoint, searchPlaces } from "@/lib/api";
 import { addDays, dateRange, kstToday } from "@/lib/dates";
@@ -11,6 +11,11 @@ import { recentPlaces, saveTrip } from "@/lib/storage";
 import type { DayInfo, ForecastResponse, GeoCandidate, Place } from "@/lib/types";
 
 type View = "none" | "date" | "best" | "two-weeks" | "month";
+
+/** ‘언제갈까?’는 오늘부터 이 기간(이번 주) 안에서 좋은 날을 고른다 */
+const BEST_SPAN_DAYS = 7;
+const BEST_COUNT = 4;
+const RECENT_COUNT = 10;
 
 function monthStart(ym: string): string {
   return `${ym}-01`;
@@ -43,8 +48,8 @@ export function HomeClient() {
   const [pickedDate, setPickedDate] = useState(today);
   const [recent, setRecent] = useState<Place[]>([]);
 
-  // 이전에 저장한(갔던) 장소 5곳 — localStorage 라서 화면이 뜬 뒤에 읽는다
-  useEffect(() => setRecent(recentPlaces(5)), []);
+  // 이전에 저장한(갔던) 장소 10곳 — localStorage 라서 화면이 뜬 뒤에 읽는다
+  useEffect(() => setRecent(recentPlaces(RECENT_COUNT)), []);
 
   const [view, setView] = useState<View>("none");
   const [month, setMonth] = useState(today.slice(0, 7));
@@ -125,7 +130,7 @@ export function HomeClient() {
   async function showBest() {
     if (!place) return;
     setView("best");
-    await load(place, today, 14);
+    await load(place, today, BEST_SPAN_DAYS);
   }
   async function showTwoWeeks() {
     if (!place) return;
@@ -170,7 +175,7 @@ export function HomeClient() {
     return data.days
       .filter((d) => d.score !== null)
       .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (a.date < b.date ? -1 : 1))
-      .slice(0, 4);
+      .slice(0, BEST_COUNT);
   }, [view, data]);
 
   return (
@@ -270,7 +275,7 @@ export function HomeClient() {
             언제갈까?
           </button>
         </div>
-        <p className="hint">{place ? "‘언제갈까?’는 이번 주부터 2주 안에서 가장 좋은 날 4일을 골라 드려요." : "먼저 위치를 골라 주세요."}</p>
+        <p className="hint">{place ? "‘언제갈까?’는 오늘부터 일주일 안에서 가장 좋은 날 4일을 골라 드려요." : "먼저 위치를 골라 주세요."}</p>
       </section>
 
       {error && (
@@ -291,12 +296,13 @@ export function HomeClient() {
             <DayCard day={data.days[0]} onSelect={(d) => select(d, data.days[0])} />
           </div>
           <p className="hint">카드를 누르면 상세 정보를 볼 수 있어요. 이 날짜는 ‘나의 바수’에 저장됐어요.</p>
+          <MoreDays onTwoWeeks={showTwoWeeks} onMonth={() => showMonth(pickedDate.slice(0, 7))} />
         </section>
       )}
 
       {view === "best" && data && (
         <section className="panel" aria-label="추천 날짜">
-          <h2>이번 주부터 가장 좋은 날 4일</h2>
+          <h2>오늘부터 이번 주에 가장 좋은 날 {BEST_COUNT}일</h2>
           {best.length === 0 ? (
             <p className="hint">예보가 있는 날이 없어요.</p>
           ) : (
@@ -306,11 +312,7 @@ export function HomeClient() {
               ))}
             </div>
           )}
-          <div className="row">
-            <button type="button" className="btn btn-ghost" onClick={showTwoWeeks}>
-              자세히 보기 (2주 달력)
-            </button>
-          </div>
+          <MoreDays onTwoWeeks={showTwoWeeks} onMonth={() => showMonth(today.slice(0, 7))} />
         </section>
       )}
 
@@ -319,10 +321,11 @@ export function HomeClient() {
           <div className="row between wrap">
             <h2>2주 달력</h2>
             <button type="button" className="btn btn-ghost" onClick={() => showMonth(today.slice(0, 7))}>
-              1달 보기
+              1달 달력
             </button>
           </div>
           <Legend />
+          <p className="hint">달력의 밀물·썰물은 시작 시각이에요. 날짜를 누르면 상세 정보를 볼 수 있어요.</p>
           <CalendarGrid days={data.days} onSelect={(d) => select(d, data.days.find((x) => x.date === d))} disabledBefore={today} />
         </section>
       )}
@@ -354,19 +357,44 @@ export function HomeClient() {
               </button>
             </div>
             <button type="button" className="btn btn-ghost" onClick={showTwoWeeks}>
-              2주 보기
+              2주 달력
             </button>
           </div>
           <Legend />
-          <CalendarGrid
-            days={data.days.length > 0 ? data.days : emptyMonth(month)}
-            month={month}
-            onSelect={(d) => select(d, data.days.find((x) => x.date === d))}
-            disabledBefore={today}
-          />
-          <p className="hint">오늘부터 약 16일 뒤까지만 날씨 예보가 있어요. 그 뒤는 ‘예보 없음’이고, 날짜를 누르면 물때·일출·일몰은 볼 수 있어요.</p>
+          <div className="cal-wrap">
+            <button
+              type="button"
+              className="cal-side"
+              aria-label="이전 달"
+              onClick={() => showMonth(shiftMonth(month, -1))}
+              disabled={loading}
+            >
+              ‹
+            </button>
+            <CalendarGrid
+              days={data.days.length > 0 ? data.days : emptyMonth(month)}
+              month={month}
+              onSelect={(d) => select(d, data.days.find((x) => x.date === d))}
+              disabledBefore={today}
+            />
+            <button
+              type="button"
+              className="cal-side"
+              aria-label="다음 달"
+              onClick={() => showMonth(shiftMonth(month, 1))}
+              disabled={loading}
+            >
+              ›
+            </button>
+          </div>
+          <p className="hint">
+            오늘부터 약 16일 뒤까지만 날씨 예보가 있어요. 그 뒤는 ‘예보 없음’이고 물때·일출·일몰만 보여요. 달력의 밀물·썰물은 시작
+            시각이에요.
+          </p>
         </section>
       )}
+
+      {data && view !== "none" && <SourceInfo data={data} />}
 
       {data && data.notes.length > 0 && (
         <ul className="notes">
@@ -375,6 +403,20 @@ export function HomeClient() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function MoreDays({ onTwoWeeks, onMonth }: { onTwoWeeks: () => void; onMonth: () => void }) {
+  return (
+    <div className="row wrap more-days">
+      <span className="hint">더 많은 날 보기</span>
+      <button type="button" className="btn btn-ghost" onClick={onTwoWeeks}>
+        📅 2주 달력
+      </button>
+      <button type="button" className="btn btn-ghost" onClick={onMonth}>
+        🗓️ 1달 달력
+      </button>
     </div>
   );
 }

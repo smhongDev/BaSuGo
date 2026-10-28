@@ -1,4 +1,4 @@
-import { nearestCoastPoint, type CoastPoint } from "./regions.ts";
+import { coastPointsByDistance, nearestCoastPoint, type CoastPoint } from "./regions.ts";
 import { dataGoKrKey, fetchDataGoKr } from "./datagokr.ts";
 
 /** 바다수영과 관련 있는 특보 종류만 본다 (건조·황사 등은 뺀다) */
@@ -24,6 +24,8 @@ export type WarningsResult = {
   issuedAt: string | null;
   /** 매칭에 쓴 해안 기준점 이름 (내륙·먼 바다면 null) */
   region: string | null;
+  /** 가까운 해안이 없어 더 먼 해안 기준점을 쓴 경우의 안내 */
+  regionNote?: string;
   alerts: WeatherAlert[];
   message?: string;
 };
@@ -129,8 +131,15 @@ export function warningsLastError(): string | null {
 }
 
 export async function getWarnings(lat: number, lng: number): Promise<WarningsResult> {
-  const near = nearestCoastPoint(lat, lng);
-  const base = { source: SOURCE, region: near?.item.name ?? null };
+  // 해안에서 먼 곳이면 가장 가까운 해안(120km 안)의 특보 구역을 대신 보여 준다
+  const exact = nearestCoastPoint(lat, lng);
+  const near = exact ?? coastPointsByDistance(lat, lng, 1)[0] ?? null;
+  const base = {
+    source: SOURCE,
+    region: near?.item.name ?? null,
+    regionNote:
+      near && !exact ? `선택한 곳은 해안에서 멀어서, 가장 가까운 해안인 ‘${near.item.name}’(약 ${Math.round(near.km)}km) 기준 특보예요.` : undefined,
+  };
   if (process.env.BASUGO_MOCK !== "1" && !dataGoKrKey()) {
     return { ...base, available: false, issuedAt: null, alerts: [], message: "기상특보 연동이 아직 설정되지 않았어요." };
   }
