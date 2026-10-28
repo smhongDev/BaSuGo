@@ -178,6 +178,7 @@ export function buildDays(lat: number, lng: number, dates: string[], src: RawSou
       rating: verdict ? verdict.rating : "unknown",
       score: verdict ? verdict.score : null,
       reasons: verdict ? verdict.reasons : ["예보 기간(오늘부터 약 16일)이 아니라서 물때·일출·일몰만 보여요"],
+      reasonTags: verdict ? verdict.reasonTags : [],
     } satisfies DayInfo;
   });
 }

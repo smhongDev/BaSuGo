@@ -27,6 +27,27 @@ const temp = (day: DayInfo) =>
   day.tMax !== null && day.tMin !== null ? `${Math.round(day.tMin)}~${Math.round(day.tMax)}℃` : null;
 const wind = (day: DayInfo) => (day.windMax !== null ? `${day.windMax.toFixed(1)}m/s` : null);
 
+const hasWhy = (day: DayInfo) => day.rating === "caution" || day.rating === "bad";
+
+/** 주의·불가일 때 왜 그런지 */
+export function WhyRating({ day, compact = false }: { day: DayInfo; compact?: boolean }) {
+  if (!hasWhy(day)) return null;
+  if (compact) {
+    const tags = day.reasonTags ?? [];
+    return tags.length > 0 ? <span className={`cal-why why-${day.rating}`}>⚠ {tags.join(" · ")}</span> : null;
+  }
+  return (
+    <div className={`why why-${day.rating}`}>
+      <strong>왜 {RATING_LABEL[day.rating]}인가요?</strong>
+      <ul>
+        {day.reasons.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function DayCard({ day, onSelect }: { day: DayInfo; onSelect: (date: string) => void }) {
   const highs = day.tides.filter((t) => t.type === "high").map((t) => hhmm(t.time));
   const flood = flowRanges(day, "flood");
@@ -43,6 +64,7 @@ export function DayCard({ day, onSelect }: { day: DayInfo; onSelect: (date: stri
         </span>
         <span>{day.weatherText}</span>
       </div>
+      <WhyRating day={day} />
       <dl className="facts">
         <div>
           <dt>기온</dt>
@@ -157,6 +179,7 @@ export function CalendarGrid({
             {!past && (
               <span className="cal-info">
                 {d.forecastAvailable && <span className="cal-weather">{d.weatherText}</span>}
+                <WhyRating day={d} compact />
                 {tw && <span>{tw}</span>}
                 {highs.length > 0 && <span>만조 {highs.join(" ")}</span>}
                 {flood.length > 0 && <span>밀물 {flood.join(" ")}</span>}

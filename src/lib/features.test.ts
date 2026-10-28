@@ -170,3 +170,11 @@ test("나의 바수: 같은 날짜·같은 지역은 최근 것만 남긴다", (
   ]);
   assert.deepEqual(kept.map((t) => t.id).sort(), ["b", "c", "d"]);
 });
+
+test("주의·불가 이유: 불가 이유가 먼저, 달력용 짧은 표시", () => {
+  const r = rateDay({ windMax: 9.4, waveMax: 0.7, precipSum: 0, seaTemp: 20, sari: true });
+  assert.equal(r.rating, "bad");
+  assert.deepEqual(r.reasonTags, ["강풍 9.4m/s", "파도 0.7m", "사리(빠른 조류)"]);
+  assert.equal(r.reasons[0], "바람이 강해요 (최대 9.4m/s)");
+  assert.deepEqual(rateDay({ windMax: 2, waveMax: 0.2, precipSum: 0, seaTemp: 20, sari: false }).reasonTags, []);
+});

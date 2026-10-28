@@ -38,6 +38,8 @@ export type DayInfo = {
   rating: Rating;
   score: number | null;
   reasons: string[];
+  /** 주의·불가 이유를 짧게 (달력 칸용, 불가 이유가 앞) */
+  reasonTags?: string[];
 };
 
 export type ForecastResponse = {

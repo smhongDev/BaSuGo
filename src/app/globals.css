@@ -811,3 +811,40 @@ textarea {
 .muted {
   color: var(--muted);
 }
+
+/* ---- 주의·불가 이유 ---- */
+.why {
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.86rem;
+}
+.why ul {
+  margin: 2px 0 0;
+  padding-left: 1.1em;
+}
+.why-caution {
+  background: var(--caution-bg);
+  color: var(--text);
+}
+.why-bad {
+  background: var(--bad-bg);
+  color: var(--text);
+}
+.why-caution strong {
+  color: var(--caution);
+}
+.why-bad strong {
+  color: var(--bad);
+}
+.cal-info .cal-why {
+  font-weight: 600;
+  white-space: normal;
+}
+.cal-why.why-caution {
+  background: none;
+  color: var(--caution);
+}
+.cal-why.why-bad {
+  background: none;
+  color: var(--bad);
+}

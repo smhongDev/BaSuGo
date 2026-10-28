@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { MapView } from "@/components/MapView";
-import { RatingBadge, SourceInfo } from "@/components/DayParts";
+import { RatingBadge, SourceInfo, WhyRating } from "@/components/DayParts";
 import { WarningBox } from "@/components/AlertParts";
 import { fetchForecast } from "@/lib/api";
 import { addDays, formatKoDate, kstToday } from "@/lib/dates";
@@ -97,11 +97,15 @@ export function DayClient() {
               </h2>
               <RatingBadge rating={day.rating} />
             </div>
-            <ul className="reasons">
-              {day.reasons.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
+            {day.rating === "caution" || day.rating === "bad" ? (
+              <WhyRating day={day} />
+            ) : (
+              <ul className="reasons">
+                {day.reasons.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            )}
             <dl className="facts big">
               <div>
                 <dt>기온</dt>

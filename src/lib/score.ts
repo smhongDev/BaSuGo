@@ -32,24 +32,29 @@ export type RateInput = {
 export function rateDay(
   input: RateInput,
   t: Thresholds = THRESHOLDS,
-): { rating: Rating; score: number; reasons: string[] } {
+): { rating: Rating; score: number; reasons: string[]; reasonTags: string[] } {
   let score = 100;
   let worst: Rating = "good";
-  const reasons: string[] = [];
+  // 불가 이유를 먼저, 그다음 주의 이유
+  const found: { level: Rating; text: string; tag: string }[] = [];
+  let level: Rating = "good";
   const bump = (r: Rating) => {
+    level = r;
     if (r === "bad" || (r === "caution" && worst === "good")) worst = r;
   };
+  /** 바로 앞의 bump() 수준으로 이유를 남긴다 (긴 문장 + 달력용 짧은 표시) */
+  const add = (text: string, tag: string) => found.push({ level, text, tag });
 
   const { windMax, waveMax, precipSum, seaTemp } = input;
   if (windMax !== null) {
     if (windMax > t.windCaution) {
       bump("bad");
       score -= 50;
-      reasons.push(`바람이 강해요 (최대 ${windMax.toFixed(1)}m/s)`);
+      add(`바람이 강해요 (최대 ${windMax.toFixed(1)}m/s)`, `강풍 ${windMax.toFixed(1)}m/s`);
     } else if (windMax > t.windGood) {
       bump("caution");
       score -= 20 + (windMax - t.windGood) * 4;
-      reasons.push(`바람이 다소 있어요 (최대 ${windMax.toFixed(1)}m/s)`);
+      add(`바람이 다소 있어요 (최대 ${windMax.toFixed(1)}m/s)`, `바람 ${windMax.toFixed(1)}m/s`);
     } else {
       score -= windMax * 2;
     }
@@ -58,11 +63,11 @@ export function rateDay(
     if (waveMax > t.waveCaution) {
       bump("bad");
       score -= 50;
-      reasons.push(`파도가 높아요 (최대 ${waveMax.toFixed(1)}m)`);
+      add(`파도가 높아요 (최대 ${waveMax.toFixed(1)}m)`, `높은 파도 ${waveMax.toFixed(1)}m`);
     } else if (waveMax > t.waveGood) {
       bump("caution");
       score -= 20;
-      reasons.push(`파도가 있어요 (최대 ${waveMax.toFixed(1)}m)`);
+      add(`파도가 있어요 (최대 ${waveMax.toFixed(1)}m)`, `파도 ${waveMax.toFixed(1)}m`);
     } else {
       score -= waveMax * 10;
     }
@@ -71,25 +76,30 @@ export function rateDay(
     if (precipSum >= t.precipCaution) {
       bump("bad");
       score -= 35;
-      reasons.push(`비가 많이 와요 (${precipSum.toFixed(1)}mm)`);
+      add(`비가 많이 와요 (${precipSum.toFixed(1)}mm)`, `많은 비 ${precipSum.toFixed(1)}mm`);
     } else if (precipSum >= t.precipGood) {
       bump("caution");
       score -= 15;
-      reasons.push(`비 소식이 있어요 (${precipSum.toFixed(1)}mm)`);
+      add(`비 소식이 있어요 (${precipSum.toFixed(1)}mm)`, `비 ${precipSum.toFixed(1)}mm`);
     }
   }
   if (seaTemp !== null && seaTemp < t.seaTempMin) {
     bump("caution");
     score -= 15;
-    reasons.push(`수온이 낮아요 (${seaTemp.toFixed(1)}℃)`);
+    add(`수온이 낮아요 (${seaTemp.toFixed(1)}℃)`, `낮은 수온 ${seaTemp.toFixed(0)}℃`);
   }
   if (input.sari) {
     bump("caution");
     score -= 8;
-    reasons.push("사리 기간이라 조류가 빨라요");
+    add("사리 기간이라 조류가 빨라요", "사리(빠른 조류)");
   }
-  if (reasons.length === 0) reasons.push("바람·파도·비 모두 잔잔해요");
-  return { rating: worst, score: Math.max(0, Math.round(score)), reasons };
+  found.sort((a, b) => (a.level === b.level ? 0 : a.level === "bad" ? -1 : 1));
+  return {
+    rating: worst,
+    score: Math.max(0, Math.round(score)),
+    reasons: found.length > 0 ? found.map((f) => f.text) : ["바람·파도·비 모두 잔잔해요"],
+    reasonTags: found.map((f) => f.tag),
+  };
 }
 
 export const RATING_LABEL: Record<Rating, string> = {
