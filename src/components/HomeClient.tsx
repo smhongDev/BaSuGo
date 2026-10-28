@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MapView, KOREA_CENTER } from "@/components/MapView";
 import { CalendarGrid, DayCard, dayHref, SourceInfo } from "@/components/DayParts";
@@ -16,6 +16,32 @@ type View = "none" | "date" | "best" | "two-weeks" | "month";
 const BEST_SPAN_DAYS = 7;
 const BEST_COUNT = 4;
 const RECENT_COUNT = 10;
+
+/** 상세·나의 바수에 다녀와도 처음 화면이 그대로 보이도록 이 탭에 잠시 기억해 둔다 */
+const HOME_STATE_KEY = "basugo.home.v1";
+/** 이보다 오래된 결과는 화면만 되살리고 예보는 새로 받는다 */
+const HOME_STATE_FRESH_MS = 30 * 60_000;
+
+type HomeState = {
+  place: Place | null;
+  query: string;
+  pickedDate: string;
+  view: View;
+  month: string;
+  data: ForecastResponse | null;
+  savedAt: number;
+};
+
+function readHomeState(): HomeState | null {
+  try {
+    const raw = window.sessionStorage.getItem(HOME_STATE_KEY);
+    return raw ? (JSON.parse(raw) as HomeState) : null;
+  } catch {
+    return null;
+  }
+}
+
+const samePlace = (a: Place | null, b: Place | null) => !!a && !!b && a.lat === b.lat && a.lng === b.lng;
 
 function monthStart(ym: string): string {
   return `${ym}-01`;
@@ -73,12 +99,58 @@ export function HomeClient() {
     [],
   );
 
+  // 되살린 장소로 바뀔 때는 결과를 지우지 않는다
+  const keepResults = useRef(false);
+  const [restored, setRestored] = useState(false);
+
   // 장소가 바뀌면 지난 결과는 지운다
   useEffect(() => {
+    if (keepResults.current) {
+      keepResults.current = false;
+      return;
+    }
     setView("none");
     setData(null);
     setError(null);
   }, [place?.lat, place?.lng]);
+
+  // 처음 화면에 돌아오면 전에 보던 지역과 결과를 되살린다 (주소에 다른 장소가 있으면 그 장소가 우선)
+  useEffect(() => {
+    const saved = readHomeState();
+    setRestored(true);
+    if (!saved || !saved.place) return;
+    if (place && !samePlace(place, saved.place)) return;
+    const pickedDate = saved.pickedDate >= today ? saved.pickedDate : today;
+    if (!samePlace(place, saved.place)) keepResults.current = true;
+    setPlace(saved.place);
+    setQuery(saved.query);
+    setPickedDate(pickedDate);
+    setMonth(saved.month);
+    setView(saved.view);
+    const fresh = Date.now() - saved.savedAt < HOME_STATE_FRESH_MS && saved.data?.days[0]?.date !== undefined;
+    if (fresh && (saved.view === "month" || saved.data!.days.some((d) => d.date >= today))) {
+      setData(saved.data);
+      return;
+    }
+    // 오래된 결과는 같은 화면으로 다시 불러온다
+    const p = saved.place;
+    if (saved.view === "date") void load(p, pickedDate, 1);
+    else if (saved.view === "best") void load(p, today, BEST_SPAN_DAYS);
+    else if (saved.view === "two-weeks") void load(p, today, 14);
+    else if (saved.view === "month") void showMonthFor(p, saved.month);
+    // 처음 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      const state: HomeState = { place, query, pickedDate, view, month, data, savedAt: Date.now() };
+      window.sessionStorage.setItem(HOME_STATE_KEY, JSON.stringify(state));
+    } catch {
+      // 저장 공간이 없으면 기억하지 않는다
+    }
+  }, [restored, place, query, pickedDate, view, month, data]);
 
   async function onSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -137,8 +209,11 @@ export function HomeClient() {
     setView("two-weeks");
     await load(place, today, 14);
   }
-  async function showMonth(ym: string) {
+  function showMonth(ym: string) {
     if (!place) return;
+    return showMonthFor(place, ym);
+  }
+  async function showMonthFor(place: Place, ym: string) {
     setView("month");
     setMonth(ym);
     const start = monthStart(ym) < today ? today : monthStart(ym);
