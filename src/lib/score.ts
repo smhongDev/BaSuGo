@@ -1,3 +1,4 @@
+import type { SeaRegion } from "./regions.ts";
 import type { Rating } from "./types.ts";
 
 export type Thresholds = {
@@ -8,6 +9,10 @@ export type Thresholds = {
   precipGood: number;
   precipCaution: number;
   seaTempMin: number;
+  /** 사리 때 점수에서 빼는 값 (바다별). 0이면 사리를 판정에서 뺀다 */
+  sariWest: number;
+  sariSouth: number;
+  sariEast: number;
 };
 
 /** "바수 가능한 날" 기본 기준 (기획서에 없어 정한 값. 운영 중에는 관리자 화면에서 바꾼 값이 우선한다) */
@@ -19,7 +24,13 @@ export const THRESHOLDS: Thresholds = {
   precipGood: 1, // mm
   precipCaution: 5,
   seaTempMin: 16, // ℃ 아래는 주의
+  // 사리 영향: 조차가 큰 서해가 가장 크고, 남해는 중간, 조차가 작은 동해는 판정에서 뺀다
+  sariWest: 20,
+  sariSouth: 8,
+  sariEast: 0,
 };
+
+const SARI_KEY: Record<SeaRegion, "sariWest" | "sariSouth" | "sariEast"> = { west: "sariWest", south: "sariSouth", east: "sariEast" };
 
 export type RateInput = {
   windMax: number | null;
@@ -27,6 +38,8 @@ export type RateInput = {
   precipSum: number | null;
   seaTemp: number | null;
   sari: boolean;
+  /** 어느 바다인가 (사리 무게가 다르다). 모르면 남해 기준 */
+  sea?: SeaRegion | null;
 };
 
 export function rateDay(
@@ -88,16 +101,19 @@ export function rateDay(
     score -= 15;
     add(`수온이 낮아요 (${seaTemp.toFixed(1)}℃)`, `낮은 수온 ${seaTemp.toFixed(0)}℃`);
   }
-  if (input.sari) {
+  const sariPenalty = t[SARI_KEY[input.sea ?? "south"]];
+  if (input.sari && sariPenalty > 0) {
     bump("caution");
-    score -= 8;
-    add("사리 기간이라 조류가 빨라요", "사리(빠른 조류)");
+    score -= sariPenalty;
+    if (input.sea === "west") add("사리 기간이라 물이 많이 들고 빠지고 조류가 빨라요 (서해)", "사리(서해 큰 조차)");
+    else add("사리 기간이라 조류가 빨라요", "사리(빠른 조류)");
   }
   found.sort((a, b) => (a.level === b.level ? 0 : a.level === "bad" ? -1 : 1));
   return {
     rating: worst,
     score: Math.max(0, Math.round(score)),
-    reasons: found.length > 0 ? found.map((f) => f.text) : ["바람·파도·비 모두 잔잔해요"],
+    reasons:
+      found.length > 0 ? found.map((f) => f.text) : [waveMax === null ? "바람·비 모두 잔잔해요" : "바람·파도·비 모두 잔잔해요"],
     reasonTags: found.map((f) => f.tag),
   };
 }

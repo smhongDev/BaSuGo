@@ -53,6 +53,17 @@ export type ForecastResponse = {
   sources?: ForecastSources;
   /** 선택한 곳 정보가 없어 가까운 지역 정보를 대신 보여 주는 경우의 안내 */
   fallbacks?: string[];
+  /** 바다 해안·섬·내륙 물가 구분 */
+  water?: ForecastWater;
+};
+
+/** 내륙 물가(호수·강·저수지)는 물때·사리·파도·수온 없이 판정한다 */
+export type ForecastWater = {
+  kind: "coast" | "island" | "inland";
+  /** 서해·남해·동해 (내륙 물가는 null) */
+  sea: "west" | "south" | "east" | null;
+  /** 예: "서해 해안", "남해 섬", "내륙 물가" */
+  label: string;
 };
 
 export type ForecastSources = { weather: string; sea: string; tide: string };

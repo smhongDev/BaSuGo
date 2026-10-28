@@ -25,7 +25,7 @@ export function DayClient() {
 
   const [day, setDay] = useState<DayInfo | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
-  const [sources, setSources] = useState<Pick<ForecastResponse, "sources" | "fallbacks">>({});
+  const [sources, setSources] = useState<Pick<ForecastResponse, "sources" | "fallbacks" | "water">>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function DayClient() {
         if (cancelled) return;
         setDay(r.days[0]);
         setNotes(r.notes);
-        setSources({ sources: r.sources, fallbacks: r.fallbacks });
+        setSources({ sources: r.sources, fallbacks: r.fallbacks, water: r.water });
         saveTrip(place, date, r.days[0]); // 상세를 열면 저장되어 있도록 보장
       })
       .catch((e) => !cancelled && setError(e instanceof Error ? e.message : "정보를 가져오지 못했어요."));
@@ -137,7 +137,11 @@ export function DayClient() {
           <section className="panel" aria-label="물때">
             <h2>만조 · 간조 · 밀물 · 썰물</h2>
             {day.tides.length === 0 ? (
-              <p className="hint">이 위치는 물때 정보를 받지 못했어요. (바다에서 너무 멀거나 예보 기간 밖일 수 있어요.)</p>
+              <p className="hint">
+                {sources.water?.kind === "inland"
+                  ? "내륙 물가(호수·강·저수지)라 물때(만조·간조·밀물·썰물)는 해당 없어요."
+                  : "이 위치는 물때 정보를 받지 못했어요. (바다에서 너무 멀거나 예보 기간 밖일 수 있어요.)"}
+              </p>
             ) : (
               <>
                 <table className="table">

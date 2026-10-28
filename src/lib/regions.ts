@@ -1,5 +1,10 @@
 import { haversineKm } from "./gpx.ts";
 
+/** 서해(조차 큼)·남해(중간)·동해(조차 작음). 섬은 둘러싼 바다를 따른다 */
+export type SeaRegion = "west" | "south" | "east";
+
+export const SEA_LABEL: Record<SeaRegion, string> = { west: "서해", south: "남해", east: "동해" };
+
 /**
  * 해안 기준점: 위치(위도·경도)를 기상청 특보 구역 이름과 국립해양조사원 조위관측소로 이어 준다.
  * 인터넷 없이 가장 가까운 기준점을 고르는 방식이라 대략적인 매칭이다.
@@ -8,6 +13,8 @@ export type CoastPoint = {
   name: string;
   lat: number;
   lng: number;
+  /** 어느 바다인가 (사리 영향이 바다마다 다르다: 서해 > 남해 > 동해) */
+  sea: SeaRegion;
   /** 특보 문구에서 광역 지역을 찾을 때 쓰는 이름들 (예: "강원도", "강원") */
   province: string[];
   /** 특보 문구의 괄호 안 시·군 이름 (예: "강릉") */
@@ -25,44 +32,44 @@ const CHUNGNAM = ["충청남도", "충남"];
 const JEJU = ["제주도", "제주"];
 
 export const COAST_POINTS: CoastPoint[] = [
-  { name: "인천", lat: 37.45, lng: 126.6, province: ["인천"], cities: ["인천"], seas: ["인천·경기북부앞바다", "인천·경기남부앞바다", "서해중부앞바다"] },
-  { name: "을왕리", lat: 37.447, lng: 126.372, province: ["인천"], cities: ["인천"], seas: ["인천·경기북부앞바다", "서해중부앞바다"] },
-  { name: "안산·대부도", lat: 37.24, lng: 126.58, province: ["경기도", "경기"], cities: ["안산", "화성"], seas: ["인천·경기남부앞바다", "서해중부앞바다"] },
-  { name: "평택", lat: 36.97, lng: 126.82, province: ["경기도", "경기"], cities: ["평택"], seas: ["인천·경기남부앞바다", "서해중부앞바다"] },
-  { name: "서산·대산", lat: 37.0, lng: 126.35, province: CHUNGNAM, cities: ["서산", "당진"], seas: ["충남북부앞바다", "서해중부앞바다"] },
-  { name: "태안", lat: 36.79, lng: 126.14, province: CHUNGNAM, cities: ["태안"], seas: ["충남북부앞바다", "서해중부앞바다"] },
-  { name: "보령", lat: 36.31, lng: 126.51, province: CHUNGNAM, cities: ["보령"], seas: ["충남남부앞바다", "서해중부앞바다"] },
-  { name: "서천", lat: 36.0, lng: 126.69, province: CHUNGNAM, cities: ["서천"], seas: ["충남남부앞바다", "서해중부앞바다"] },
-  { name: "군산", lat: 35.98, lng: 126.56, province: JEONBUK, cities: ["군산"], seas: ["전북북부앞바다", "서해남부앞바다"] },
-  { name: "부안", lat: 35.68, lng: 126.53, province: JEONBUK, cities: ["부안", "고창"], seas: ["전북남부앞바다", "서해남부앞바다"] },
-  { name: "영광", lat: 35.43, lng: 126.42, province: JEONNAM, cities: ["영광"], seas: ["전남북부서해앞바다", "서해남부앞바다"] },
-  { name: "목포", lat: 34.78, lng: 126.38, province: JEONNAM, cities: ["목포", "신안", "무안"], seas: ["전남중부서해앞바다", "서해남부앞바다"] },
-  { name: "흑산도", lat: 34.68, lng: 125.43, province: JEONNAM, cities: ["흑산도", "신안"], seas: ["흑산도·홍도", "서해남부먼바다"] },
-  { name: "진도", lat: 34.38, lng: 126.31, province: JEONNAM, cities: ["진도", "해남"], seas: ["전남남부서해앞바다", "남해서부앞바다"] },
-  { name: "완도", lat: 34.31, lng: 126.76, province: JEONNAM, cities: ["완도", "강진"], seas: ["전남중부남해앞바다", "남해서부앞바다"] },
-  { name: "고흥", lat: 34.48, lng: 127.34, province: JEONNAM, cities: ["고흥", "보성"], seas: ["전남동부남해앞바다", "남해서부앞바다"] },
-  { name: "여수", lat: 34.75, lng: 127.77, province: JEONNAM, cities: ["여수"], seas: ["전남동부남해앞바다", "남해서부앞바다"] },
-  { name: "남해·사천", lat: 34.85, lng: 127.98, province: GYEONGNAM, cities: ["남해", "사천", "하동"], seas: ["경남서부남해앞바다", "남해동부앞바다"] },
-  { name: "통영", lat: 34.83, lng: 128.43, province: GYEONGNAM, cities: ["통영", "고성"], seas: ["경남중부남해앞바다", "남해동부앞바다"] },
-  { name: "거제", lat: 34.8, lng: 128.7, province: GYEONGNAM, cities: ["거제"], seas: ["거제시동부앞바다", "남해동부앞바다"] },
-  { name: "부산", lat: 35.1, lng: 129.04, province: ["부산"], cities: ["부산"], seas: ["부산앞바다", "남해동부앞바다"] },
-  { name: "해운대", lat: 35.16, lng: 129.16, province: ["부산"], cities: ["부산"], seas: ["부산앞바다", "남해동부앞바다"] },
-  { name: "울산", lat: 35.5, lng: 129.38, province: ["울산"], cities: ["울산"], seas: ["울산앞바다", "동해남부앞바다"] },
-  { name: "경주", lat: 35.75, lng: 129.48, province: GYEONGBUK, cities: ["경주"], seas: ["경북남부앞바다", "동해남부앞바다"] },
-  { name: "포항", lat: 36.05, lng: 129.38, province: GYEONGBUK, cities: ["포항"], seas: ["경북남부앞바다", "동해남부앞바다"] },
-  { name: "영덕", lat: 36.41, lng: 129.37, province: GYEONGBUK, cities: ["영덕"], seas: ["경북북부앞바다", "동해남부앞바다"] },
-  { name: "울진", lat: 36.68, lng: 129.45, province: GYEONGBUK, cities: ["울진"], seas: ["경북북부앞바다", "동해남부앞바다"] },
-  { name: "울릉도", lat: 37.49, lng: 130.91, province: GYEONGBUK, cities: ["울릉"], seas: ["울릉도·독도", "동해중부먼바다"] },
-  { name: "삼척", lat: 37.44, lng: 129.17, province: GANGWON, cities: ["삼척"], seas: ["강원남부앞바다", "동해중부앞바다"] },
-  { name: "동해", lat: 37.55, lng: 129.12, province: GANGWON, cities: ["동해"], seas: ["강원남부앞바다", "동해중부앞바다"] },
-  { name: "강릉", lat: 37.8, lng: 128.91, province: GANGWON, cities: ["강릉"], seas: ["강원중부앞바다", "동해중부앞바다"] },
-  { name: "양양", lat: 38.07, lng: 128.63, province: GANGWON, cities: ["양양"], seas: ["강원중부앞바다", "동해중부앞바다"] },
-  { name: "속초", lat: 38.2, lng: 128.59, province: GANGWON, cities: ["속초"], seas: ["강원북부앞바다", "동해중부앞바다"] },
-  { name: "고성(강원)", lat: 38.38, lng: 128.47, province: GANGWON, cities: ["고성"], seas: ["강원북부앞바다", "동해중부앞바다"] },
-  { name: "제주시", lat: 33.52, lng: 126.53, province: JEJU, cities: ["제주도북부", "제주시"], seas: ["제주도북부앞바다", "제주도앞바다"] },
-  { name: "협재·모슬포", lat: 33.3, lng: 126.25, province: JEJU, cities: ["제주도서부"], seas: ["제주도서부앞바다", "제주도앞바다"] },
-  { name: "서귀포", lat: 33.24, lng: 126.56, province: JEJU, cities: ["제주도남부", "서귀포"], seas: ["제주도남부앞바다", "제주도앞바다"] },
-  { name: "성산", lat: 33.46, lng: 126.93, province: JEJU, cities: ["제주도동부"], seas: ["제주도동부앞바다", "제주도앞바다"] },
+  { name: "인천", lat: 37.45, lng: 126.6, sea: "west", province: ["인천"], cities: ["인천"], seas: ["인천·경기북부앞바다", "인천·경기남부앞바다", "서해중부앞바다"] },
+  { name: "을왕리", lat: 37.447, lng: 126.372, sea: "west", province: ["인천"], cities: ["인천"], seas: ["인천·경기북부앞바다", "서해중부앞바다"] },
+  { name: "안산·대부도", lat: 37.24, lng: 126.58, sea: "west", province: ["경기도", "경기"], cities: ["안산", "화성"], seas: ["인천·경기남부앞바다", "서해중부앞바다"] },
+  { name: "평택", lat: 36.97, lng: 126.82, sea: "west", province: ["경기도", "경기"], cities: ["평택"], seas: ["인천·경기남부앞바다", "서해중부앞바다"] },
+  { name: "서산·대산", lat: 37.0, lng: 126.35, sea: "west", province: CHUNGNAM, cities: ["서산", "당진"], seas: ["충남북부앞바다", "서해중부앞바다"] },
+  { name: "태안", lat: 36.79, lng: 126.14, sea: "west", province: CHUNGNAM, cities: ["태안"], seas: ["충남북부앞바다", "서해중부앞바다"] },
+  { name: "보령", lat: 36.31, lng: 126.51, sea: "west", province: CHUNGNAM, cities: ["보령"], seas: ["충남남부앞바다", "서해중부앞바다"] },
+  { name: "서천", lat: 36.0, lng: 126.69, sea: "west", province: CHUNGNAM, cities: ["서천"], seas: ["충남남부앞바다", "서해중부앞바다"] },
+  { name: "군산", lat: 35.98, lng: 126.56, sea: "west", province: JEONBUK, cities: ["군산"], seas: ["전북북부앞바다", "서해남부앞바다"] },
+  { name: "부안", lat: 35.68, lng: 126.53, sea: "west", province: JEONBUK, cities: ["부안", "고창"], seas: ["전북남부앞바다", "서해남부앞바다"] },
+  { name: "영광", lat: 35.43, lng: 126.42, sea: "west", province: JEONNAM, cities: ["영광"], seas: ["전남북부서해앞바다", "서해남부앞바다"] },
+  { name: "목포", lat: 34.78, lng: 126.38, sea: "west", province: JEONNAM, cities: ["목포", "신안", "무안"], seas: ["전남중부서해앞바다", "서해남부앞바다"] },
+  { name: "흑산도", lat: 34.68, lng: 125.43, sea: "west", province: JEONNAM, cities: ["흑산도", "신안"], seas: ["흑산도·홍도", "서해남부먼바다"] },
+  { name: "진도", lat: 34.38, lng: 126.31, sea: "west", province: JEONNAM, cities: ["진도", "해남"], seas: ["전남남부서해앞바다", "남해서부앞바다"] },
+  { name: "완도", lat: 34.31, lng: 126.76, sea: "south", province: JEONNAM, cities: ["완도", "강진"], seas: ["전남중부남해앞바다", "남해서부앞바다"] },
+  { name: "고흥", lat: 34.48, lng: 127.34, sea: "south", province: JEONNAM, cities: ["고흥", "보성"], seas: ["전남동부남해앞바다", "남해서부앞바다"] },
+  { name: "여수", lat: 34.75, lng: 127.77, sea: "south", province: JEONNAM, cities: ["여수"], seas: ["전남동부남해앞바다", "남해서부앞바다"] },
+  { name: "남해·사천", lat: 34.85, lng: 127.98, sea: "south", province: GYEONGNAM, cities: ["남해", "사천", "하동"], seas: ["경남서부남해앞바다", "남해동부앞바다"] },
+  { name: "통영", lat: 34.83, lng: 128.43, sea: "south", province: GYEONGNAM, cities: ["통영", "고성"], seas: ["경남중부남해앞바다", "남해동부앞바다"] },
+  { name: "거제", lat: 34.8, lng: 128.7, sea: "south", province: GYEONGNAM, cities: ["거제"], seas: ["거제시동부앞바다", "남해동부앞바다"] },
+  { name: "부산", lat: 35.1, lng: 129.04, sea: "south", province: ["부산"], cities: ["부산"], seas: ["부산앞바다", "남해동부앞바다"] },
+  { name: "해운대", lat: 35.16, lng: 129.16, sea: "south", province: ["부산"], cities: ["부산"], seas: ["부산앞바다", "남해동부앞바다"] },
+  { name: "울산", lat: 35.5, lng: 129.38, sea: "east", province: ["울산"], cities: ["울산"], seas: ["울산앞바다", "동해남부앞바다"] },
+  { name: "경주", lat: 35.75, lng: 129.48, sea: "east", province: GYEONGBUK, cities: ["경주"], seas: ["경북남부앞바다", "동해남부앞바다"] },
+  { name: "포항", lat: 36.05, lng: 129.38, sea: "east", province: GYEONGBUK, cities: ["포항"], seas: ["경북남부앞바다", "동해남부앞바다"] },
+  { name: "영덕", lat: 36.41, lng: 129.37, sea: "east", province: GYEONGBUK, cities: ["영덕"], seas: ["경북북부앞바다", "동해남부앞바다"] },
+  { name: "울진", lat: 36.68, lng: 129.45, sea: "east", province: GYEONGBUK, cities: ["울진"], seas: ["경북북부앞바다", "동해남부앞바다"] },
+  { name: "울릉도", lat: 37.49, lng: 130.91, sea: "east", province: GYEONGBUK, cities: ["울릉"], seas: ["울릉도·독도", "동해중부먼바다"] },
+  { name: "삼척", lat: 37.44, lng: 129.17, sea: "east", province: GANGWON, cities: ["삼척"], seas: ["강원남부앞바다", "동해중부앞바다"] },
+  { name: "동해", lat: 37.55, lng: 129.12, sea: "east", province: GANGWON, cities: ["동해"], seas: ["강원남부앞바다", "동해중부앞바다"] },
+  { name: "강릉", lat: 37.8, lng: 128.91, sea: "east", province: GANGWON, cities: ["강릉"], seas: ["강원중부앞바다", "동해중부앞바다"] },
+  { name: "양양", lat: 38.07, lng: 128.63, sea: "east", province: GANGWON, cities: ["양양"], seas: ["강원중부앞바다", "동해중부앞바다"] },
+  { name: "속초", lat: 38.2, lng: 128.59, sea: "east", province: GANGWON, cities: ["속초"], seas: ["강원북부앞바다", "동해중부앞바다"] },
+  { name: "고성(강원)", lat: 38.38, lng: 128.47, sea: "east", province: GANGWON, cities: ["고성"], seas: ["강원북부앞바다", "동해중부앞바다"] },
+  { name: "제주시", lat: 33.52, lng: 126.53, sea: "south", province: JEJU, cities: ["제주도북부", "제주시"], seas: ["제주도북부앞바다", "제주도앞바다"] },
+  { name: "협재·모슬포", lat: 33.3, lng: 126.25, sea: "south", province: JEJU, cities: ["제주도서부"], seas: ["제주도서부앞바다", "제주도앞바다"] },
+  { name: "서귀포", lat: 33.24, lng: 126.56, sea: "south", province: JEJU, cities: ["제주도남부", "서귀포"], seas: ["제주도남부앞바다", "제주도앞바다"] },
+  { name: "성산", lat: 33.46, lng: 126.93, sea: "south", province: JEJU, cities: ["제주도동부"], seas: ["제주도동부앞바다", "제주도앞바다"] },
 ];
 
 /** 국립해양조사원 조위관측소 (조석예보 obsCode) */

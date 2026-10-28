@@ -1,13 +1,17 @@
 import { addDays, kstToday } from "./dates.ts";
 import type { RawSources } from "./forecast.ts";
 import type { GeocodeResponse } from "./types.ts";
+import { classifyWater, maybeInland } from "./water.ts";
 
 /** 외부 API 없이 화면을 확인하기 위한 가짜 데이터 (BASUGO_MOCK=1 일 때만 사용) */
-export function mockSources(_lat: number, _lng: number, dates: string[]): RawSources {
+export function mockSources(lat: number, lng: number, dates: string[]): RawSources {
   const today = kstToday();
   const last = addDays(today, 15);
   const days = dates.filter((d) => d >= today && d <= last);
-  if (days.length === 0) return { weather: null, marine: null };
+  // 해안선에서 먼 곳은 바다 예보가 없는 내륙 물가로 흉내 낸다
+  const inland = maybeInland(lat, lng);
+  const water = classifyWater(lat, lng, !inland);
+  if (days.length === 0) return { weather: null, marine: null, water };
 
   const weather = {
     time: days,
@@ -32,7 +36,7 @@ export function mockSources(_lat: number, _lng: number, dates: string[]): RawSou
     sea_surface_temperature: time.map(() => 21.4),
     wave_height: time.map((_, i) => 0.2 + 0.25 * Math.abs(Math.sin(i / 40))),
   };
-  return { weather, marine };
+  return { weather, marine: inland ? null : marine, water };
 }
 
 export function mockGeocode(q: string): GeocodeResponse {

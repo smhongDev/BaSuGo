@@ -20,6 +20,9 @@ export const THRESHOLD_LIMITS: Record<keyof Thresholds, [number, number]> = {
   precipGood: [0, 100],
   precipCaution: [0, 300],
   seaTempMin: [0, 35],
+  sariWest: [0, 60],
+  sariSouth: [0, 60],
+  sariEast: [0, 60],
 };
 
 let cache: { at: number; value: Settings } | null = null;

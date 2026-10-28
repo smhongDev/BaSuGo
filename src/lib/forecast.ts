@@ -7,6 +7,7 @@ import { fetchKhoaTides, type KhoaTides } from "./khoa.ts";
 import { coastPointsByDistance } from "./regions.ts";
 import { haversineKm } from "./gpx.ts";
 import { getSettings } from "./server/settings.ts";
+import { classifyWater, maybeInland, type WaterClass } from "./water.ts";
 import type { DayInfo, ForecastResponse, ForecastSources, TideEvent } from "./types.ts";
 
 const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
@@ -42,6 +43,8 @@ export type RawSources = {
   weatherFrom?: FallbackRegion;
   /** 파도·수온·해수면을 가까운 해안에서 가져온 경우 */
   marineFrom?: FallbackRegion;
+  /** 바다 해안·섬·내륙 물가 구분 (내륙 물가면 바다 정보를 쓰지 않는다) */
+  water?: WaterClass;
 };
 
 async function getJson<T>(url: string): Promise<T> {
@@ -59,7 +62,7 @@ export async function fetchSources(lat: number, lng: number, dates: string[]): P
   const today = kstToday();
   const last = addDays(today, FORECAST_SPAN_DAYS - 1);
   const inRange = dates.filter((d) => d >= today && d <= last);
-  if (inRange.length === 0) return { weather: null, marine: null };
+  if (inRange.length === 0) return { weather: null, marine: null, water: classifyWater(lat, lng, !maybeInland(lat, lng)) };
   const start = inRange[0];
   const end = inRange[inRange.length - 1];
   // 물때 계산을 위해 바다 정보는 앞뒤로 하루씩 더 받는다
@@ -87,13 +90,16 @@ export async function fetchSources(lat: number, lng: number, dates: string[]): P
   const orNull = <T>(p: Promise<T>) => p.catch(() => null);
 
   let [weather, marine] = await Promise.all([orNull(weatherAt(lat, lng)), orNull(marineAt(lat, lng))]);
-  const out: RawSources = { weather, marine };
+  const water = classifyWater(lat, lng, marineOk(marine));
+  const inland = water.kind === "inland";
+  // 내륙 물가(호수·강·저수지)는 바다 예보·물때가 해당 없으니 가까운 바다 정보도 가져오지 않는다
+  const out: RawSources = { weather, marine: inland ? null : marine, water };
 
   // 선택한 곳 정보를 못 받으면 가까운 해안 기준점(120km 안)에서 차례로 받아 본다
-  if (!weatherOk(weather) || !marineOk(marine)) {
+  if (!weatherOk(weather) || (!inland && !marineOk(marine))) {
     for (const { item, km } of coastPointsByDistance(lat, lng, 3)) {
       const needWeather = !weatherOk(out.weather);
-      const needMarine = !marineOk(out.marine);
+      const needMarine = !inland && !marineOk(out.marine);
       if (!needWeather && !needMarine) break;
       [weather, marine] = await Promise.all([
         needWeather ? orNull(weatherAt(item.lat, item.lng)) : null,
@@ -104,7 +110,7 @@ export async function fetchSources(lat: number, lng: number, dates: string[]): P
       if (needMarine && marineOk(marine)) Object.assign(out, { marine, marineFrom: from });
     }
   }
-  if (!out.marineFrom && marineOk(out.marine) && farSea) {
+  if (!inland && !out.marineFrom && marineOk(out.marine) && farSea) {
     const sea: { lat: number; lng: number; km: number } = farSea;
     const name = coastPointsByDistance(sea.lat, sea.lng, 1)[0]?.item.name;
     out.marineFrom = { name: name ? `${name} 부근 바다` : "가장 가까운 바다", km: Math.round(sea.km) };
@@ -125,8 +131,12 @@ export type BuildOptions = {
 };
 
 export function buildDays(lat: number, lng: number, dates: string[], src: RawSources, opts: BuildOptions = {}): DayInfo[] {
-  const marine = src.marine;
-  const allTides: TideEvent[] = opts.tides
+  const inland = src.water?.kind === "inland";
+  // 내륙 물가는 파도·수온·물때·사리 없이 날씨·기온·바람·비로만 판정한다
+  const marine = inland ? null : src.marine;
+  const allTides: TideEvent[] = inland
+    ? []
+    : opts.tides
     ? opts.tides
     : marine?.sea_level_height_msl && marine.sea_level_height_msl.some((h) => h !== null)
       ? extractTides(marine.time, marine.sea_level_height_msl)
@@ -153,7 +163,10 @@ export function buildDays(lat: number, lng: number, dates: string[], src: RawSou
     const windMax = available ? src.weather!.wind_speed_10m_max[wi] : null;
     const precipSum = available ? src.weather!.precipitation_sum[wi] : null;
     const verdict = available
-      ? rateDay({ windMax, waveMax, precipSum, seaTemp, sari: md.sari }, opts.thresholds ?? THRESHOLDS)
+      ? rateDay(
+          { windMax, waveMax, precipSum, seaTemp, sari: !inland && md.sari, sea: src.water?.sea },
+          opts.thresholds ?? THRESHOLDS,
+        )
       : null;
     const sun = sunTimes(date, lat, lng);
 
@@ -172,7 +185,7 @@ export function buildDays(lat: number, lng: number, dates: string[], src: RawSou
       tides: tidesForDay(allTides, date),
       flows: flowsForDay(allTides, date),
       lunarDay: ld,
-      mulddae: md.label,
+      mulddae: inland ? "해당 없음 (내륙 물가)" : md.label,
       sunrise: sun.sunrise,
       sunset: sun.sunset,
       rating: verdict ? verdict.rating : "unknown",
@@ -186,6 +199,11 @@ export function buildDays(lat: number, lng: number, dates: string[], src: RawSou
 export const FORECAST_NOTES = [
   "날씨·파도·수온·해수면은 Open-Meteo 예보이고, 물때(만조·간조)는 해수면 높이를 1시간 간격으로 받아 계산한 값이라 실제와 수십 분 차이날 수 있어요.",
   "바수 가능 여부는 풍속 5m/s, 파고 0.5m, 비 1mm 등 기본 기준으로 계산한 참고용이며, 입수 전에 현지 기상특보와 안전 정보를 꼭 확인해 주세요.",
+];
+
+const INLAND_NOTES = [
+  "내륙 물가(호수·강·저수지)라 물때·사리·파도·수온은 해당 없어요. 날씨·기온·바람·비로만 판정해요.",
+  "날씨는 Open-Meteo 예보예요. 바수 가능 여부는 풍속 5m/s, 비 1mm 등 기본 기준으로 계산한 참고용이며, 입수 가능 구역·수질·안전 정보를 꼭 확인해 주세요.",
 ];
 
 const KHOA_NOTE = (station: string) =>
@@ -206,6 +224,10 @@ function describeSources(src: RawSources, khoa: KhoaTides | null, hasTides: bool
   const fallbacks: string[] = [];
   const weather = src.weatherFrom ? `${src.weatherFrom.name} 부근 (약 ${src.weatherFrom.km}km)` : "선택한 위치";
   if (src.weatherFrom) fallbacks.push(`선택한 곳의 날씨 예보가 없어서 가까운 ‘${src.weatherFrom.name}’(약 ${src.weatherFrom.km}km) 날씨를 보여 드려요.`);
+  if (src.water?.kind === "inland") {
+    const none = "해당 없음 (내륙 물가)";
+    return { sources: { weather, sea: none, tide: none }, fallbacks };
+  }
   const seaName = (n: string) => (n.endsWith("바다") ? n : `${n} 앞바다`);
   const sea = src.marineFrom ? `${seaName(src.marineFrom.name)} (약 ${src.marineFrom.km}km)` : "선택한 위치 앞바다";
   if (src.marineFrom) fallbacks.push(`선택한 곳의 바다 예보(파도·수온·해수면)가 없어서 가까운 ‘${seaName(src.marineFrom.name)}’(약 ${src.marineFrom.km}km) 정보를 보여 드려요.`);
@@ -225,20 +247,24 @@ function describeSources(src: RawSources, khoa: KhoaTides | null, hasTides: bool
 export async function getForecast(lat: number, lng: number, start: string, days: number): Promise<ForecastResponse> {
   const dates = dateRange(start, days);
   const mock = process.env.BASUGO_MOCK === "1";
-  const [src, settings, khoa] = await Promise.all([
+  // 해안선에서 먼 곳(내륙일 수 있는 곳)은 조석예보를 받지 않는다 — 가까운 바다의 물때를 내륙에 붙이지 않게
+  const [src, settings, khoaRaw] = await Promise.all([
     mock ? (await import("./mock.ts")).mockSources(lat, lng, dates) : fetchSources(lat, lng, dates),
     getSettings(),
-    mock ? null : khoaOrNull(lat, lng, dates),
+    mock || maybeInland(lat, lng) ? null : khoaOrNull(lat, lng, dates),
   ]);
-  const notes = khoa ? [KHOA_NOTE(khoa.station.name), ...FORECAST_NOTES.slice(1)] : FORECAST_NOTES;
+  const inland = src.water?.kind === "inland";
+  const khoa = inland ? null : khoaRaw;
+  const notes = inland ? INLAND_NOTES : khoa ? [KHOA_NOTE(khoa.station.name), ...FORECAST_NOTES.slice(1)] : FORECAST_NOTES;
   const built = buildDays(lat, lng, dates, src, { thresholds: settings.thresholds, tides: khoa?.events });
   const { sources, fallbacks } = describeSources(src, khoa, built.some((d) => d.tides.length > 0));
   return {
     place: { lat, lng },
     days: built,
     notes,
-    tideSource: khoa ? `국립해양조사원 ${khoa.station.name}` : "Open-Meteo 해수면 계산",
+    tideSource: inland ? "해당 없음 (내륙 물가)" : khoa ? `국립해양조사원 ${khoa.station.name}` : "Open-Meteo 해수면 계산",
     sources,
     fallbacks,
+    water: src.water ? { kind: src.water.kind, sea: src.water.sea, label: src.water.label } : undefined,
   };
 }

@@ -32,6 +32,9 @@ const FIELDS: { key: keyof Thresholds; label: string; unit: string }[] = [
   { key: "precipGood", label: "강수 — 미만이면 가능", unit: "mm" },
   { key: "precipCaution", label: "강수 — 미만이면 주의 (이상이면 불가)", unit: "mm" },
   { key: "seaTempMin", label: "수온 — 미만이면 주의", unit: "℃" },
+  { key: "sariWest", label: "사리 감점 — 서해 (0이면 판정에서 뺌)", unit: "점" },
+  { key: "sariSouth", label: "사리 감점 — 남해·제주", unit: "점" },
+  { key: "sariEast", label: "사리 감점 — 동해", unit: "점" },
 ];
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -302,7 +305,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                 기본값으로 채우기
               </button>
             </div>
-            <p className="hint">사리 기간은 항상 ‘주의’로 봐요. 기준 저장 후 1분 안에 모든 방문자 화면에 적용돼요.</p>
+            <p className="hint">사리 감점이 0보다 크면 사리 기간을 ‘주의’로 보고 그만큼 점수를 빼요 (서해·남해·동해 따로). 호수·강 같은 내륙 물가는 물때·사리·파도·수온 없이 날씨로만 판정해요. 기준 저장 후 1분 안에 모든 방문자 화면에 적용돼요.</p>
           </>
         )}
       </section>
