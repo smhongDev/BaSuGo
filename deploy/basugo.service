@@ -15,7 +15,10 @@ Restart=always
 RestartSec=3
 TimeoutStopSec=20
 
-# 보안: 쓰기는 빌드 캐시 폴더만 (저장 데이터는 사용자 브라우저에 있고 서버 DB는 없다)
+# 보안: 쓰기는 빌드 캐시 폴더와 상태 폴더만.
+# 방문자 기록은 각자의 브라우저에 있고, 서버에는 공지·기준값·알림 구독만 /var/lib/basugo 에 JSON 으로 둔다.
+StateDirectory=basugo
+StateDirectoryMode=0750
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict

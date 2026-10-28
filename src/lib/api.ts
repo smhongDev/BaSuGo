@@ -1,4 +1,5 @@
 import type { ForecastResponse, GeocodeResponse } from "./types.ts";
+import type { WarningsResult } from "./warnings.ts";
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -14,3 +15,6 @@ export const searchPlaces = (q: string) => getJson<GeocodeResponse>(`/api/geocod
 
 export const nameForPoint = (lat: number, lng: number) =>
   getJson<{ name: string }>(`/api/geocode?lat=${lat}&lng=${lng}`);
+
+export const fetchWarnings = (lat: number, lng: number) =>
+  getJson<WarningsResult>(`/api/warnings?lat=${lat}&lng=${lng}`);

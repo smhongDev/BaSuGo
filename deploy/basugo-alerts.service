@@ -1,0 +1,16 @@
+[Unit]
+Description=BaSuGo 알림 검사 (오늘·내일 일정의 기상특보·예보 변화)
+After=basugo.service
+Requires=basugo.service
+
+[Service]
+Type=oneshot
+User=basugo
+Group=basugo
+EnvironmentFile=/etc/basugo/env
+# 비밀값이 프로세스 목록에 보이지 않도록 헤더를 표준입력으로 넘긴다
+ExecStart=/bin/sh -c 'printf "x-alert-secret: %%s\n" "$$ALERT_SECRET" | curl -fsS -m 300 -X POST -H @- http://127.0.0.1:3001/api/alerts/run'
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true

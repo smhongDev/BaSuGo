@@ -1,0 +1,10 @@
+[Unit]
+Description=BaSuGo 알림 검사 (하루 6번)
+
+[Timer]
+OnCalendar=*-*-* 07,10,13,16,19,21:00:00 Asia/Seoul
+RandomizedDelaySec=60
+Persistent=false
+
+[Install]
+WantedBy=timers.target

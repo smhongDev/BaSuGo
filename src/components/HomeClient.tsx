@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MapView, KOREA_CENTER } from "@/components/MapView";
 import { CalendarGrid, DayCard, dayHref } from "@/components/DayParts";
+import { UpcomingAlerts, WarningBox } from "@/components/AlertParts";
 import { fetchForecast, nameForPoint, searchPlaces } from "@/lib/api";
 import { addDays, dateRange, kstToday } from "@/lib/dates";
-import { saveTrip } from "@/lib/storage";
+import { recentPlaces, saveTrip } from "@/lib/storage";
 import type { DayInfo, ForecastResponse, GeoCandidate, Place } from "@/lib/types";
 
 type View = "none" | "date" | "best" | "two-weeks" | "month";
@@ -40,6 +41,10 @@ export function HomeClient() {
   const [approximate, setApproximate] = useState(false);
   const [searching, setSearching] = useState(false);
   const [pickedDate, setPickedDate] = useState(today);
+  const [recent, setRecent] = useState<Place[]>([]);
+
+  // 이전에 저장한(갔던) 장소 5곳 — localStorage 라서 화면이 뜬 뒤에 읽는다
+  useEffect(() => setRecent(recentPlaces(5)), []);
 
   const [view, setView] = useState<View>("none");
   const [month, setMonth] = useState(today.slice(0, 7));
@@ -170,6 +175,7 @@ export function HomeClient() {
 
   return (
     <div className="stack">
+      <UpcomingAlerts />
       <section className="panel" aria-labelledby="where">
         <h2 id="where">① 어디로 갈까요?</h2>
         <form onSubmit={onSearch} className="row">
@@ -185,6 +191,25 @@ export function HomeClient() {
             {searching ? "찾는 중…" : "검색"}
           </button>
         </form>
+
+        {recent.length > 0 && candidates.length === 0 && (
+          <div className="recent">
+            <span className="hint">최근에 간 곳</span>
+            <ul className="chips">
+              {recent.map((p) => (
+                <li key={`${p.lat},${p.lng}`}>
+                  <button
+                    type="button"
+                    className={`chip${place && place.lat === p.lat && place.lng === p.lng ? " on" : ""}`}
+                    onClick={() => setPlace(p)}
+                  >
+                    {p.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {candidates.length > 0 && (
           <div className="candidates">
@@ -222,6 +247,7 @@ export function HomeClient() {
             "검색하거나 지도를 눌러서 바다수영 갈 곳을 골라 주세요."
           )}
         </p>
+        {place && place.name !== "위치 확인 중…" && <WarningBox lat={place.lat} lng={place.lng} />}
       </section>
 
       <section className="panel" aria-labelledby="when">

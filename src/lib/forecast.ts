@@ -2,7 +2,9 @@ import { addDays, dateRange, kstToday } from "./dates.ts";
 import { describeWeather } from "./weather.ts";
 import { extractTides, flowsForDay, tidesForDay } from "./tides.ts";
 import { lunarDay, mulddae, sunTimes } from "./lunar.ts";
-import { rateDay } from "./score.ts";
+import { rateDay, THRESHOLDS, type Thresholds } from "./score.ts";
+import { fetchKhoaTides } from "./khoa.ts";
+import { getSettings } from "./server/settings.ts";
 import type { DayInfo, ForecastResponse, TideEvent } from "./types.ts";
 
 const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
@@ -70,10 +72,17 @@ function mean(values: number[]): number | null {
   return values.length === 0 ? null : values.reduce((a, b) => a + b, 0) / values.length;
 }
 
-export function buildDays(lat: number, lng: number, dates: string[], src: RawSources): DayInfo[] {
+export type BuildOptions = {
+  thresholds?: Thresholds;
+  /** 국립해양조사원 조석예보처럼 바깥에서 받은 만조·간조 (있으면 해수면 계산 대신 쓴다) */
+  tides?: TideEvent[];
+};
+
+export function buildDays(lat: number, lng: number, dates: string[], src: RawSources, opts: BuildOptions = {}): DayInfo[] {
   const marine = src.marine;
-  const allTides: TideEvent[] =
-    marine?.sea_level_height_msl && marine.sea_level_height_msl.some((h) => h !== null)
+  const allTides: TideEvent[] = opts.tides
+    ? opts.tides
+    : marine?.sea_level_height_msl && marine.sea_level_height_msl.some((h) => h !== null)
       ? extractTides(marine.time, marine.sea_level_height_msl)
       : [];
 
@@ -98,7 +107,7 @@ export function buildDays(lat: number, lng: number, dates: string[], src: RawSou
     const windMax = available ? src.weather!.wind_speed_10m_max[wi] : null;
     const precipSum = available ? src.weather!.precipitation_sum[wi] : null;
     const verdict = available
-      ? rateDay({ windMax, waveMax, precipSum, seaTemp, sari: md.sari })
+      ? rateDay({ windMax, waveMax, precipSum, seaTemp, sari: md.sari }, opts.thresholds ?? THRESHOLDS)
       : null;
     const sun = sunTimes(date, lat, lng);
 
@@ -132,11 +141,32 @@ export const FORECAST_NOTES = [
   "바수 가능 여부는 풍속 5m/s, 파고 0.5m, 비 1mm 등 기본 기준으로 계산한 참고용이며, 입수 전에 현지 기상특보와 안전 정보를 꼭 확인해 주세요.",
 ];
 
+const KHOA_NOTE = (station: string) =>
+  `만조·간조는 국립해양조사원 조석예보(${station} 관측소)이고, 높이는 그 관측소의 기본수준면 기준이에요. 날씨·파도·수온은 Open-Meteo 예보예요.`;
+
+/** 조석예보를 못 받으면 해수면 계산으로 돌아간다 (사이트가 멈추지 않게). */
+async function khoaOrNull(lat: number, lng: number, dates: string[]) {
+  try {
+    return await fetchKhoaTides(lat, lng, dates);
+  } catch (e) {
+    console.error("khoa tides failed", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 export async function getForecast(lat: number, lng: number, start: string, days: number): Promise<ForecastResponse> {
   const dates = dateRange(start, days);
-  const src =
-    process.env.BASUGO_MOCK === "1"
-      ? (await import("./mock.ts")).mockSources(lat, lng, dates)
-      : await fetchSources(lat, lng, dates);
-  return { place: { lat, lng }, days: buildDays(lat, lng, dates, src), notes: FORECAST_NOTES };
+  const mock = process.env.BASUGO_MOCK === "1";
+  const [src, settings, khoa] = await Promise.all([
+    mock ? (await import("./mock.ts")).mockSources(lat, lng, dates) : fetchSources(lat, lng, dates),
+    getSettings(),
+    mock ? null : khoaOrNull(lat, lng, dates),
+  ]);
+  const notes = khoa ? [KHOA_NOTE(khoa.station.name), ...FORECAST_NOTES.slice(1)] : FORECAST_NOTES;
+  return {
+    place: { lat, lng },
+    days: buildDays(lat, lng, dates, src, { thresholds: settings.thresholds, tides: khoa?.events }),
+    notes,
+    tideSource: khoa ? `국립해양조사원 ${khoa.station.name}` : "Open-Meteo 해수면 계산",
+  };
 }

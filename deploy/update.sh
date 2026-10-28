@@ -31,12 +31,20 @@ fi
 echo "==> 설치·빌드"
 as_app bash -c "cd '$APP_DIR' && npm ci --no-audit --no-fund && NODE_OPTIONS=--max-old-space-size=1536 NEXT_TELEMETRY_DISABLED=1 npm run build"
 
+echo "==> 설정값 확인"
+# shellcheck source=ensure-env.sh
+source "$APP_DIR/deploy/ensure-env.sh"
+
 echo "==> 재시작"
 install -m 0644 "$APP_DIR/deploy/basugo.service" /etc/systemd/system/basugo.service
+install -m 0644 "$APP_DIR/deploy/basugo-alerts.service" /etc/systemd/system/basugo-alerts.service
+install -m 0644 "$APP_DIR/deploy/basugo-alerts.timer" /etc/systemd/system/basugo-alerts.timer
 install -m 0755 "$APP_DIR/deploy/update.sh" /usr/local/sbin/basugo-update
 install -m 0644 "$APP_DIR/deploy/config.sh" /usr/local/share/basugo/config.sh
+install -m 0644 "$APP_DIR/deploy/ensure-env.sh" /usr/local/share/basugo/ensure-env.sh
 systemctl daemon-reload
 systemctl restart basugo.service
+systemctl enable --now basugo-alerts.timer
 
 for i in $(seq 1 30); do
   if curl -fsS -o /dev/null "http://127.0.0.1:${PORT}/"; then echo "완료: 앱 응답 OK ($after)"; exit 0; fi

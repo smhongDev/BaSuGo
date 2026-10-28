@@ -1,7 +1,17 @@
 import type { Rating } from "./types.ts";
 
-/** "바수 가능한 날" 기준 (기획서에 없어 기본값으로 둔 값 — 여기서만 바꾸면 된다) */
-export const THRESHOLDS = {
+export type Thresholds = {
+  windGood: number;
+  windCaution: number;
+  waveGood: number;
+  waveCaution: number;
+  precipGood: number;
+  precipCaution: number;
+  seaTempMin: number;
+};
+
+/** "바수 가능한 날" 기본 기준 (기획서에 없어 정한 값. 운영 중에는 관리자 화면에서 바꾼 값이 우선한다) */
+export const THRESHOLDS: Thresholds = {
   windGood: 5, // m/s
   windCaution: 8,
   waveGood: 0.5, // m
@@ -19,8 +29,10 @@ export type RateInput = {
   sari: boolean;
 };
 
-export function rateDay(input: RateInput): { rating: Rating; score: number; reasons: string[] } {
-  const t = THRESHOLDS;
+export function rateDay(
+  input: RateInput,
+  t: Thresholds = THRESHOLDS,
+): { rating: Rating; score: number; reasons: string[] } {
   let score = 100;
   let worst: Rating = "good";
   const reasons: string[] = [];

@@ -42,6 +42,10 @@ EOT
 else
   echo "이미 있습니다 (그대로 둡니다)."
 fi
+# 관리자 계정·알림 비밀값이 없으면 만든다 (출력하지 않음)
+# shellcheck source=ensure-env.sh
+source "$HERE/ensure-env.sh"
+echo "관리자 비밀번호 확인: sudo grep ADMIN_PASSWORD $ENV_FILE"
 
 as_app() { sudo -u "$APP_USER" -H "$@"; }
 if [ -n "$SRC_DIR" ]; then
@@ -91,9 +95,13 @@ install -m 0644 "$HERE/basugo.service" /etc/systemd/system/basugo.service
 install -m 0755 "$HERE/update.sh" /usr/local/sbin/basugo-update
 install -d -m 0755 /usr/local/share/basugo
 install -m 0644 "$HERE/config.sh" /usr/local/share/basugo/config.sh
+install -m 0644 "$HERE/ensure-env.sh" /usr/local/share/basugo/ensure-env.sh
+install -m 0644 "$HERE/basugo-alerts.service" /etc/systemd/system/basugo-alerts.service
+install -m 0644 "$HERE/basugo-alerts.timer" /etc/systemd/system/basugo-alerts.timer
 systemctl daemon-reload
 systemctl enable basugo.service
 systemctl restart basugo.service
+systemctl enable --now basugo-alerts.timer
 
 log "Caddy 설정 (${DOMAIN} → 127.0.0.1:${PORT}, HTTPS 자동)"
 install -d -m 0755 /etc/caddy/conf.d
@@ -125,6 +133,8 @@ cat <<EOT
 - 주소: https://${DOMAIN}  (DNS A 레코드가 이 서버를 가리켜야 인증서가 발급됩니다)
 - 로그: journalctl -u basugo -f
 - 업데이트: sudo basugo-update
+- 관리자: https://${DOMAIN}/admin  (아이디 admin, 비밀번호: sudo grep ADMIN_PASSWORD ${ENV_FILE})
+- 기상특보·조석예보: ${ENV_FILE} 에 DATA_GO_KR_KEY=공공데이터포털키 를 넣고 sudo systemctl restart basugo
 - 주의: SharedLectured 의 setup-server.sh 를 다시 실행하면 /etc/caddy/Caddyfile 이 새로 써져서
   BaSuGo import 줄이 사라집니다. 그때는 이 스크립트를 한 번 더 실행하세요.
 EOT

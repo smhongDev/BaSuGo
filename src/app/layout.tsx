@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { NoticeBanner, PushSync } from "@/components/AlertParts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,11 +30,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
           </div>
         </header>
-        <main className="container">{children}</main>
+        <main className="container">
+          <NoticeBanner />
+          {children}
+        </main>
+        <PushSync />
         <footer className="container site-footer">
           <p>
             바수고는 참고용 정보를 제공합니다. 입수 전 해양경찰·기상청의 특보와 현장 안전 안내를 꼭 확인하고, 혼자 먼 바다로
             나가지 마세요.
+          </p>
+          <p>
+            <Link href="/admin" className="footer-link">
+              관리자
+            </Link>
           </p>
         </footer>
       </body>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { MapView, KOREA_CENTER } from "@/components/MapView";
 import { RatingBadge, dayHref } from "@/components/DayParts";
+import { PushToggle, UpcomingAlerts } from "@/components/AlertParts";
 import { DEFAULT_WEIGHT_KG, swimCalories } from "@/lib/calories";
 import { formatKoDate } from "@/lib/dates";
 import { analyzeTrack, parseGpxText } from "@/lib/gpx";
@@ -128,6 +129,23 @@ export function MyClient() {
 
   return (
     <div className="stack">
+      <section className="panel guide" aria-labelledby="guide">
+        <h2 id="guide">ℹ️ 나의 바수는 이렇게 저장돼요</h2>
+        <p>회원가입 없이 쓸 수 있어요. 고른 날짜와 수영 기록은 <strong>지금 쓰고 있는 기기의 브라우저 안</strong>에 저장돼요.</p>
+        <ul>
+          <li>
+            저장한 정보를 다시 보려면 <strong>같은 기기, 같은 브라우저</strong>(예: 휴대폰 크롬)로 들어와야 해요. 다른 기기나 다른
+            브라우저에서는 보이지 않아요.
+          </li>
+          <li>브라우저의 방문 기록·쿠키·사이트 데이터를 지우면 저장한 정보도 함께 지워져요.</li>
+          <li>시크릿(사생활 보호) 모드에서는 창을 닫으면 사라져요.</li>
+          <li>저장 내용은 서버로 보내지 않아요. (알림을 켜면 알림에 필요한 다가올 일정만 익명으로 보내요.)</li>
+        </ul>
+        <PushToggle />
+      </section>
+
+      <UpcomingAlerts />
+
       <section className="panel" aria-labelledby="saved">
         <div className="row between wrap">
           <h2 id="saved">저장한 날짜</h2>

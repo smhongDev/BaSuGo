@@ -21,7 +21,11 @@ function write(key: string, value: unknown): void {
   } catch {
     // 저장 공간이 없거나 사생활 보호 모드면 저장하지 못한다
   }
+  if (key === TRIPS_KEY) window.dispatchEvent(new Event(TRIPS_EVENT));
 }
+
+/** 저장한 날짜가 바뀌면 알림 구독의 일정도 다시 보내도록 알린다 */
+export const TRIPS_EVENT = "basugo:trips";
 
 export const tripId = (place: Place, date: string) => `${place.lat.toFixed(3)},${place.lng.toFixed(3)}|${date}`;
 
@@ -46,6 +50,21 @@ export function saveTrip(place: Place, date: string, day?: DayInfo): void {
     tMax: day?.tMax ?? prev?.tMax ?? null,
   });
   write(TRIPS_KEY, trips);
+}
+
+/** 최근에 저장한 장소 (같은 곳은 한 번만, 최근 순) */
+export function recentPlaces(limit = 5): Place[] {
+  const trips = read<SavedTrip[]>(TRIPS_KEY, []).sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1));
+  const seen = new Set<string>();
+  const out: Place[] = [];
+  for (const t of trips) {
+    const k = `${t.place.lat.toFixed(3)},${t.place.lng.toFixed(3)}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(t.place);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 export function deleteTrips(ids: string[]): void {

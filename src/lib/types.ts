@@ -45,6 +45,8 @@ export type ForecastResponse = {
   days: DayInfo[];
   /** 물때 데이터 출처 안내 */
   notes: string[];
+  /** 만조·간조를 어디서 가져왔는지 */
+  tideSource?: string;
 };
 
 export type GeoCandidate = {

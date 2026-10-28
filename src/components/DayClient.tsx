@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { MapView } from "@/components/MapView";
 import { RatingBadge } from "@/components/DayParts";
+import { WarningBox } from "@/components/AlertParts";
 import { fetchForecast } from "@/lib/api";
 import { addDays, formatKoDate, kstToday } from "@/lib/dates";
 import { saveTrip } from "@/lib/storage";
@@ -83,6 +84,8 @@ export function DayClient() {
 
       <MapView center={[lat, lng]} marker={[lat, lng]} zoom={13} height={260} label={`${name} 위치 지도`} />
 
+      {date >= today && date <= addDays(today, 2) && <WarningBox lat={lat} lng={lng} />}
+
       {day && (
         <>
           <section className="panel" aria-label="바수 판단">
@@ -136,7 +139,7 @@ export function DayClient() {
                     <tr>
                       <th>구분</th>
                       <th>시각</th>
-                      <th>해수면</th>
+                      <th>높이</th>
                     </tr>
                   </thead>
                   <tbody>

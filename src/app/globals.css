@@ -553,3 +553,141 @@ label.btn:focus-within {
     font-size: 1.05rem;
   }
 }
+
+/* ---- 공지·특보·알림 ---- */
+input[type="text"],
+input[type="password"],
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 44px;
+  min-width: 0;
+  width: 100%;
+}
+textarea {
+  resize: vertical;
+}
+.notice {
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  background: var(--unknown-bg);
+  border: 1px solid var(--line);
+}
+.notice-warning {
+  background: var(--caution-bg);
+  color: var(--caution);
+  border-color: transparent;
+}
+.warn-box {
+  margin-top: 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--caution-bg);
+  color: var(--text);
+}
+.warn-box.warn-strong {
+  background: var(--bad-bg);
+}
+.warn-box strong {
+  color: var(--bad);
+}
+.warn-box ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.warn-box li.muted {
+  color: var(--muted);
+}
+.warn-none {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+}
+.hint-inline {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.warn-text {
+  color: var(--bad) !important;
+  font-weight: 600;
+}
+.list-item.alert {
+  border-color: var(--bad);
+  background: var(--bad-bg);
+}
+.guide ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.guide p {
+  margin: 0;
+}
+.push-box {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.recent {
+  margin-top: 10px;
+}
+.chips {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  font: inherit;
+  font-size: 0.9rem;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip.on,
+.chip:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.footer-link {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.ok-msg {
+  color: var(--good);
+  background: var(--good-bg);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0;
+}
+.check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.th-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.admin-login {
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
+}
