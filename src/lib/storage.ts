@@ -1,4 +1,5 @@
 import { DEFAULT_WEIGHT_KG } from "./calories.ts";
+import { haversineKm } from "./gpx.ts";
 import type { DayInfo, Place, SavedTrip, SwimRecord } from "./types.ts";
 
 // 로그인 없이 이 기기의 브라우저에만 저장한다 (기본값). 서버 저장이 필요해지면 이 파일만 바꾸면 된다.
@@ -29,15 +30,37 @@ export const TRIPS_EVENT = "basugo:trips";
 
 export const tripId = (place: Place, date: string) => `${place.lat.toFixed(3)},${place.lng.toFixed(3)}|${date}`;
 
-export function loadTrips(): SavedTrip[] {
-  return read<SavedTrip[]>(TRIPS_KEY, []).sort((a, b) => (a.date < b.date ? 1 : -1));
+/** 같은 지역: 1km 안이거나, 이름이 같고 30km 안 (검색·지도·최근 장소로 고른 좌표가 조금씩 달라도 같은 곳으로 본다) */
+export function sameRegion(a: Place, b: Place): boolean {
+  const km = haversineKm(a, b);
+  return km <= 1 || (a.name.trim() === b.name.trim() && km <= 30);
 }
 
-/** 같은 장소·날짜는 하나로 합친다. */
+/** 같은 날짜·같은 지역은 가장 최근에 저장한 것 하나만 남긴다 */
+export function dedupeTrips(trips: SavedTrip[]): SavedTrip[] {
+  const newestFirst = [...trips].sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1));
+  const kept: SavedTrip[] = [];
+  for (const t of newestFirst) {
+    if (!kept.some((k) => k.date === t.date && sameRegion(k.place, t.place))) kept.push(t);
+  }
+  return kept;
+}
+
+export function loadTrips(): SavedTrip[] {
+  const all = read<SavedTrip[]>(TRIPS_KEY, []);
+  const trips = dedupeTrips(all);
+  // 예전에 겹쳐 저장된 것이 있으면 정리해 둔다
+  if (trips.length !== all.length) write(TRIPS_KEY, trips);
+  return trips.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+/** 같은 날짜·같은 지역은 새로 저장한 것만 남기고 이전 것은 지운다. */
 export function saveTrip(place: Place, date: string, day?: DayInfo): void {
   const id = tripId(place, date);
-  const trips = read<SavedTrip[]>(TRIPS_KEY, []).filter((t) => t.id !== id);
-  const prev = read<SavedTrip[]>(TRIPS_KEY, []).find((t) => t.id === id);
+  const all = read<SavedTrip[]>(TRIPS_KEY, []);
+  const same = (t: SavedTrip) => t.id === id || (t.date === date && sameRegion(t.place, place));
+  const trips = all.filter((t) => !same(t));
+  const prev = all.filter(same).sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1))[0];
   trips.push({
     id,
     place,

@@ -9,6 +9,7 @@ import { decideAlert, isAllowedEndpoint } from "./server/push.ts";
 import { buildDays } from "./forecast.ts";
 import { mockSources } from "./mock.ts";
 import { kstToday } from "./dates.ts";
+import { dedupeTrips } from "./storage.ts";
 
 const point = (name: string) => COAST_POINTS.find((p) => p.name === name)!;
 
@@ -147,4 +148,25 @@ test("가까운 정보가 없을 때 대신 쓸 지역: 가까운 순, 120km 안
   assert.ok(coasts.every((c) => c.km <= 120));
   assert.equal(tideStationsByDistance(35.1587, 129.1604, 2)[0].item.code, "DT_0005");
   assert.deepEqual(coastPointsByDistance(40.5, 140, 3), []); // 너무 먼 곳
+});
+
+test("나의 바수: 같은 날짜·같은 지역은 최근 것만 남긴다", () => {
+  const trip = (id: string, name: string, lat: number, lng: number, date: string, savedAt: string) => ({
+    id,
+    place: { name, lat, lng },
+    date,
+    savedAt,
+    rating: "good" as const,
+    weatherText: "",
+    weatherIcon: "",
+    windMax: null,
+    tMax: null,
+  });
+  const kept = dedupeTrips([
+    trip("a", "해운대해수욕장", 35.1587, 129.1604, "2026-10-30", "2026-10-28T01:00:00Z"),
+    trip("b", "해운대해수욕장", 35.1601, 129.1652, "2026-10-30", "2026-10-28T03:00:00Z"), // 0.5km 옆, 더 최근
+    trip("c", "해운대해수욕장", 35.1587, 129.1604, "2026-10-31", "2026-10-28T01:00:00Z"), // 다른 날짜
+    trip("d", "광안리해수욕장", 35.1532, 129.1187, "2026-10-30", "2026-10-28T00:00:00Z"), // 다른 지역
+  ]);
+  assert.deepEqual(kept.map((t) => t.id).sort(), ["b", "c", "d"]);
 });
