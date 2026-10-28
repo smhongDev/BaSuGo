@@ -74,16 +74,20 @@ export function DayCard({ day, onSelect }: { day: DayInfo; onSelect: (date: stri
           <dt>풍속</dt>
           <dd>{wind(day) ?? "–"}</dd>
         </div>
-        <div>
-          <dt>물때</dt>
-          <dd>{day.mulddae}</dd>
-        </div>
+        {!day.inland && (
+          <div>
+            <dt>물때</dt>
+            <dd>{day.mulddae}</dd>
+          </div>
+        )}
       </dl>
       <dl className="tide-list">
-        <div>
-          <dt>🌊 만조</dt>
-          <dd>{highs.length > 0 ? highs.join(" · ") : day.mulddae.startsWith("해당 없음") ? "해당 없음" : "정보 없음"}</dd>
-        </div>
+        {!day.inland && (
+          <div>
+            <dt>🌊 만조</dt>
+            <dd>{highs.length > 0 ? highs.join(" · ") : "정보 없음"}</dd>
+          </div>
+        )}
         {flood.length > 0 && (
           <div>
             <dt>↗ 밀물</dt>
@@ -111,14 +115,16 @@ export function DayCard({ day, onSelect }: { day: DayInfo; onSelect: (date: stri
 export function SourceInfo({ data }: { data: Pick<ForecastResponse, "sources" | "fallbacks" | "water"> }) {
   if (!data.sources) return null;
   const fb = data.fallbacks ?? [];
+  const inland = data.water?.kind === "inland";
   return (
     <div className={`source-info${fb.length > 0 ? " fallback" : ""}`}>
-      {data.water?.kind === "inland" && <p>🏞️ 내륙 물가라 물때는 해당 없어요. 사리·파도·수온 없이 날씨·기온·바람·비로만 판정해요.</p>}
+      {inland && <p>🏞️ 내륙 물가라 물때 정보는 없어요. 날씨·기온·바람·비로만 판정해요.</p>}
       {fb.map((f) => (
         <p key={f}>ℹ️ {f}</p>
       ))}
       <p className="hint-inline">
-        📍 {data.water ? `${data.water.label} · ` : ""}정보 기준 — 날씨: {data.sources.weather} · 파도·수온: {data.sources.sea} · 만조·간조: {data.sources.tide}
+        📍 {data.water ? `${data.water.label} · ` : ""}정보 기준 — 날씨: {data.sources.weather}
+        {!inland && ` · 파도·수온: ${data.sources.sea} · 만조·간조: ${data.sources.tide}`}
       </p>
     </div>
   );

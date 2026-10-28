@@ -185,12 +185,15 @@ export function buildDays(lat: number, lng: number, dates: string[], src: RawSou
       tides: tidesForDay(allTides, date),
       flows: flowsForDay(allTides, date),
       lunarDay: ld,
-      mulddae: inland ? "해당 없음 (내륙 물가)" : md.label,
+      mulddae: inland ? "" : md.label,
+      inland,
       sunrise: sun.sunrise,
       sunset: sun.sunset,
       rating: verdict ? verdict.rating : "unknown",
       score: verdict ? verdict.score : null,
-      reasons: verdict ? verdict.reasons : ["예보 기간(오늘부터 약 16일)이 아니라서 물때·일출·일몰만 보여요"],
+      reasons: verdict
+        ? verdict.reasons
+        : [`예보 기간(오늘부터 약 16일)이 아니라서 ${inland ? "" : "물때·"}일출·일몰만 보여요`],
       reasonTags: verdict ? verdict.reasonTags : [],
     } satisfies DayInfo;
   });
@@ -202,7 +205,6 @@ export const FORECAST_NOTES = [
 ];
 
 const INLAND_NOTES = [
-  "내륙 물가(호수·강·저수지)라 물때·사리·파도·수온은 해당 없어요. 날씨·기온·바람·비로만 판정해요.",
   "날씨는 Open-Meteo 예보예요. 바수 가능 여부는 풍속 5m/s, 비 1mm 등 기본 기준으로 계산한 참고용이며, 입수 가능 구역·수질·안전 정보를 꼭 확인해 주세요.",
 ];
 

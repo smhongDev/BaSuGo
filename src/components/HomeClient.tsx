@@ -400,7 +400,9 @@ export function HomeClient() {
             </button>
           </div>
           <Legend />
-          <p className="hint">달력의 밀물·썰물은 시작 시각이에요. 날짜를 누르면 상세 정보를 볼 수 있어요.</p>
+          <p className="hint">
+            {data.water?.kind === "inland" ? "" : "달력의 밀물·썰물은 시작 시각이에요. "}날짜를 누르면 상세 정보를 볼 수 있어요.
+          </p>
           <CalendarGrid days={data.days} onSelect={(d) => select(d, data.days.find((x) => x.date === d))} disabledBefore={today} />
         </section>
       )}
@@ -463,8 +465,9 @@ export function HomeClient() {
             </button>
           </div>
           <p className="hint">
-            오늘부터 약 16일 뒤까지만 날씨 예보가 있어요. 그 뒤는 ‘예보 없음’이고 물때·일출·일몰만 보여요. 달력의 밀물·썰물은 시작
-            시각이에요.
+            {data.water?.kind === "inland"
+              ? "오늘부터 약 16일 뒤까지만 날씨 예보가 있어요. 그 뒤는 ‘예보 없음’이고 일출·일몰만 보여요."
+              : "오늘부터 약 16일 뒤까지만 날씨 예보가 있어요. 그 뒤는 ‘예보 없음’이고 물때·일출·일몰만 보여요. 달력의 밀물·썰물은 시작 시각이에요."}
           </p>
         </section>
       )}

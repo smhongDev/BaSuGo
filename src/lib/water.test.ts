@@ -55,9 +55,19 @@ test("내륙 물가: 사리 날에도 물때·파도·수온 없이 날씨로만
   assert.equal(day.waveMax, null);
   assert.equal(day.seaTemp, null);
   assert.deepEqual(day.tides, []);
-  assert.ok(day.mulddae.startsWith("해당 없음"));
+  assert.equal(day.mulddae, "");
+  assert.equal(day.inland, true);
   assert.ok(!(day.reasonTags ?? []).some((t) => t.includes("사리") || t.includes("파도") || t.includes("수온")));
   // 바다(대천)는 같은 날 사리가 판정에 들어간다
   const sea = buildDays(DAECHEON.lat, DAECHEON.lng, [sariDate], mockSources(DAECHEON.lat, DAECHEON.lng, [sariDate]))[0];
   if (mulddae(lunarDay(sariDate)).sari) assert.ok((sea.reasonTags ?? []).some((t) => t.includes("사리")));
+});
+
+test("내륙 물가는 바다 구역 특보(풍랑)를 빼고 육상 특보만 본다", async () => {
+  const { alertsFor } = await import("./warnings.ts");
+  const { COAST_POINTS } = await import("./regions.ts");
+  const yangyang = COAST_POINTS.find((p) => p.name === "양양")!;
+  const status = { tmFc: null, t6: "o 풍랑주의보 : 동해중부앞바다\no 강풍주의보 : 강원도(양양군평지)", t7: "" };
+  assert.deepEqual(alertsFor(status, yangyang).map((a) => a.kind).sort(), ["강풍주의보", "풍랑주의보"]);
+  assert.deepEqual(alertsFor(status, yangyang, true).map((a) => a.kind), ["강풍주의보"]);
 });

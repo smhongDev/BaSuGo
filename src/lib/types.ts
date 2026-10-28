@@ -32,7 +32,10 @@ export type DayInfo = {
   tides: TideEvent[];
   flows: TideFlow[];
   lunarDay: number;
+  /** 물때 이름 (내륙 물가는 빈 문자열) */
   mulddae: string;
+  /** 내륙 물가(호수·강·저수지): 물때·만조·간조·파도·수온을 보여 주지 않는다 */
+  inland?: boolean;
   sunrise: string;
   sunset: string;
   rating: Rating;

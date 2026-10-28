@@ -1,4 +1,5 @@
 import { coastPointsByDistance, nearestCoastPoint, type CoastPoint } from "./regions.ts";
+import { maybeInland } from "./water.ts";
 import { dataGoKrKey, fetchDataGoKr } from "./datagokr.ts";
 
 /** 바다수영과 관련 있는 특보 종류만 본다 (건조·황사 등은 뺀다) */
@@ -77,11 +78,12 @@ export function matchRegions(regions: string, point: CoastPoint): { match: "exac
   return province ? { match: "province", areas: province } : null;
 }
 
-export function alertsFor(status: PwnStatus, point: CoastPoint): WeatherAlert[] {
+/** landOnly: 내륙 물가라 바다 구역 특보(풍랑 등 앞바다·먼바다)는 빼고 육상 특보만 본다 */
+export function alertsFor(status: PwnStatus, point: CoastPoint, landOnly = false): WeatherAlert[] {
   const out: WeatherAlert[] = [];
   for (const { kind, regions } of [...splitLines(status.t6), ...splitLines(status.t7)]) {
     if (!RELEVANT.some((r) => kind.includes(r))) continue;
-    const hit = matchRegions(regions, point);
+    const hit = matchRegions(regions, landOnly ? { ...point, seas: [] } : point);
     if (hit) out.push({ kind, level: levelOf(kind), ...hit });
   }
   // 직접 해당 → 경보 → 주의보 → 예비특보 순
@@ -149,7 +151,7 @@ export async function getWarnings(lat: number, lng: number): Promise<WarningsRes
       ...base,
       available: true,
       issuedAt: formatTmFc(status.tmFc),
-      alerts: near ? alertsFor(status, near.item) : [],
+      alerts: near ? alertsFor(status, near.item, maybeInland(lat, lng)) : [],
       message: near ? undefined : "해안에서 멀어 특보 구역을 정하지 못했어요.",
     };
   } catch {

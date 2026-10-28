@@ -111,68 +111,72 @@ export function DayClient() {
                 <dt>기온</dt>
                 <dd>{day.tMax !== null && day.tMin !== null ? `${Math.round(day.tMin)}~${Math.round(day.tMax)}℃` : "–"}</dd>
               </div>
-              <div>
-                <dt>수온</dt>
-                <dd>{num(day.seaTemp, "℃")}</dd>
-              </div>
+              {!day.inland && (
+                <div>
+                  <dt>수온</dt>
+                  <dd>{num(day.seaTemp, "℃")}</dd>
+                </div>
+              )}
               <div>
                 <dt>풍속(최대)</dt>
                 <dd>{num(day.windMax, "m/s")}</dd>
               </div>
-              <div>
-                <dt>파고(최대)</dt>
-                <dd>{num(day.waveMax, "m")}</dd>
-              </div>
+              {!day.inland && (
+                <div>
+                  <dt>파고(최대)</dt>
+                  <dd>{num(day.waveMax, "m")}</dd>
+                </div>
+              )}
               <div>
                 <dt>강수량</dt>
                 <dd>{num(day.precipSum, "mm")}</dd>
               </div>
-              <div>
-                <dt>물때</dt>
-                <dd>{day.mulddae}</dd>
-              </div>
+              {!day.inland && (
+                <div>
+                  <dt>물때</dt>
+                  <dd>{day.mulddae}</dd>
+                </div>
+              )}
             </dl>
           </section>
 
-          <section className="panel" aria-label="물때">
-            <h2>만조 · 간조 · 밀물 · 썰물</h2>
-            {day.tides.length === 0 ? (
-              <p className="hint">
-                {sources.water?.kind === "inland"
-                  ? "내륙 물가(호수·강·저수지)라 물때(만조·간조·밀물·썰물)는 해당 없어요."
-                  : "이 위치는 물때 정보를 받지 못했어요. (바다에서 너무 멀거나 예보 기간 밖일 수 있어요.)"}
-              </p>
-            ) : (
-              <>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>구분</th>
-                      <th>시각</th>
-                      <th>높이</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {day.tides.map((t) => (
-                      <tr key={t.time}>
-                        <td>{t.type === "high" ? "만조 ▲" : "간조 ▼"}</td>
-                        <td>{hhmm(t.time)}</td>
-                        <td>{t.height.toFixed(2)}m</td>
+          {!day.inland && (
+            <section className="panel" aria-label="물때">
+              <h2>만조 · 간조 · 밀물 · 썰물</h2>
+              {day.tides.length === 0 ? (
+                <p className="hint">이 위치는 물때 정보를 받지 못했어요. (바다에서 너무 멀거나 예보 기간 밖일 수 있어요.)</p>
+              ) : (
+                <>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>구분</th>
+                        <th>시각</th>
+                        <th>높이</th>
                       </tr>
+                    </thead>
+                    <tbody>
+                      {day.tides.map((t) => (
+                        <tr key={t.time}>
+                          <td>{t.type === "high" ? "만조 ▲" : "간조 ▼"}</td>
+                          <td>{hhmm(t.time)}</td>
+                          <td>{t.height.toFixed(2)}m</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <ul className="flows">
+                    {day.flows.map((f) => (
+                      <li key={f.from}>
+                        {f.kind === "flood" ? "밀물 (물이 들어옴)" : "썰물 (물이 빠짐)"}: {flowTime(f.from, date)} →{" "}
+                        {flowTime(f.to, date)}
+                      </li>
                     ))}
-                  </tbody>
-                </table>
-                <ul className="flows">
-                  {day.flows.map((f) => (
-                    <li key={f.from}>
-                      {f.kind === "flood" ? "밀물 (물이 들어옴)" : "썰물 (물이 빠짐)"}: {flowTime(f.from, date)} →{" "}
-                      {flowTime(f.to, date)}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </section>
+                  </ul>
+                </>
+              )}
+            </section>
+          )}
 
           <section className="panel" aria-label="일출 일몰">
             <h2>일출 · 일몰</h2>
