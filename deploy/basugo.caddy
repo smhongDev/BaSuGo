@@ -1,0 +1,23 @@
+# BaSuGo — /etc/caddy/conf.d/basugo.caddy 로 설치된다.
+# setup-server.sh 가 __DOMAIN__, __PORT__ 를 바꿔서 복사한다.
+# (SharedLectured의 /etc/caddy/Caddyfile 은 건드리지 않고, 그 파일에 import 한 줄만 추가한다.)
+
+__DOMAIN__ {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy 127.0.0.1:__PORT__
+
+	log {
+		output file /var/log/caddy/basugo.log {
+			roll_size 20MiB
+			roll_keep 5
+		}
+	}
+}

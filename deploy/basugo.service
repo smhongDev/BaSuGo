@@ -1,0 +1,32 @@
+[Unit]
+Description=BaSuGo (Next.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=basugo
+Group=basugo
+WorkingDirectory=/opt/basugo/app
+EnvironmentFile=/etc/basugo/env
+Environment=HOME=/opt/basugo
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3001
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+
+# 보안: 쓰기는 빌드 캐시 폴더만 (저장 데이터는 사용자 브라우저에 있고 서버 DB는 없다)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/basugo/app/.next
+ReadOnlyPaths=/opt/basugo
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
